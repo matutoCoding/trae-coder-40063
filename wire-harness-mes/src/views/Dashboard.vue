@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue'
 import { useMESStore } from '../stores/mes'
 import * as echarts from 'echarts'
 
@@ -10,7 +10,17 @@ const processChartRef = ref<HTMLElement | null>(null)
 let weeklyChart: echarts.ECharts | null = null
 let processChart: echarts.ECharts | null = null
 
+const chartPeriod = ref('week')
+
 const stats = computed(() => store.dashboardStats)
+
+const currentOutputData = computed(() => {
+  return chartPeriod.value === 'month' ? store.monthlyOutputData : store.weeklyOutputData
+})
+
+const chartTitle = computed(() => {
+  return chartPeriod.value === 'month' ? '本月产量趋势' : '本周产量趋势'
+})
 
 const processStatusList = computed(() => [
   { name: '裁线剥皮', icon: 'Scissors', pending: store.pendingCuttingTasks.length, processing: store.processingCuttingTasks.length, completed: store.completedCuttingTasks.length, color: '#1890ff' },
@@ -21,9 +31,9 @@ const processStatusList = computed(() => [
   { name: '外观包装', icon: 'Box', pending: store.packagingTasks.filter(t => t.status === 'pending').length, processing: store.packagingTasks.filter(t => t.status === 'processing').length, completed: store.packagingTasks.filter(t => t.status === 'completed').length, color: '#eb2f96' },
 ])
 
-function initWeeklyChart() {
-  if (!weeklyChartRef.value) return
-  weeklyChart = echarts.init(weeklyChartRef.value)
+function updateWeeklyChart() {
+  if (!weeklyChart) return
+  const data = currentOutputData.value
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -42,7 +52,7 @@ function initWeeklyChart() {
     },
     xAxis: {
       type: 'category',
-      data: store.weeklyOutputData.map(d => d.day),
+      data: data.map(d => d.day),
       axisLine: { lineStyle: { color: '#e8e8e8' } }
     },
     yAxis: {
@@ -54,20 +64,26 @@ function initWeeklyChart() {
       {
         name: '产量',
         type: 'bar',
-        data: store.weeklyOutputData.map(d => d.output),
+        data: data.map(d => d.output),
         itemStyle: { color: '#1890ff', borderRadius: [4, 4, 0, 0] },
         barWidth: '35%'
       },
       {
         name: '合格数',
         type: 'bar',
-        data: store.weeklyOutputData.map(d => d.pass),
+        data: data.map(d => d.pass),
         itemStyle: { color: '#52c41a', borderRadius: [4, 4, 0, 0] },
         barWidth: '35%'
       }
     ]
   }
-  weeklyChart.setOption(option)
+  weeklyChart.setOption(option, true)
+}
+
+function initWeeklyChart() {
+  if (!weeklyChartRef.value) return
+  weeklyChart = echarts.init(weeklyChartRef.value)
+  updateWeeklyChart()
 }
 
 function initProcessChart() {
@@ -126,6 +142,10 @@ function initProcessChart() {
   processChart.setOption(option)
 }
 
+watch(chartPeriod, () => {
+  updateWeeklyChart()
+})
+
 function handleResize() {
   weeklyChart?.resize()
   processChart?.resize()
@@ -135,6 +155,12 @@ onMounted(() => {
   initWeeklyChart()
   initProcessChart()
   window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  weeklyChart?.dispose()
+  processChart?.dispose()
 })
 </script>
 
@@ -212,10 +238,10 @@ onMounted(() => {
       <el-col :span="16">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">本周产量趋势</h3>
-            <el-radio-group size="small" v-model="stats">
-              <el-radio-button label="本周"></el-radio-button>
-              <el-radio-button label="本月"></el-radio-button>
+            <h3 class="card-title">{{ chartTitle }}</h3>
+            <el-radio-group v-model="chartPeriod" size="small">
+              <el-radio-button value="week">本周</el-radio-button>
+              <el-radio-button value="month">本月</el-radio-button>
             </el-radio-group>
           </div>
           <div ref="weeklyChartRef" class="chart-container"></div>

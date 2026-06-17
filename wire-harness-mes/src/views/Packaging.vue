@@ -264,14 +264,12 @@ function getResultTag(result: 'pass' | 'fail') {
     : { type: 'danger' as const, text: '不合格' }
 }
 
-function handleDropdownCommand(cmd: string, row: PackagingTask) {
-  if (cmd === 'appearance') handleAppearanceCheck(row)
-  if (cmd === 'bellows') handleBellows(row)
-  if (cmd === 'label') handleLabelPrint(row)
+function canBellows(task: PackagingTask) {
+  return task.appearanceChecked
 }
 
-function makeDropdownHandler(row: PackagingTask) {
-  return (cmd: unknown) => handleDropdownCommand(String(cmd), row)
+function canLabel(task: PackagingTask) {
+  return task.appearanceChecked
 }
 </script>
 
@@ -389,29 +387,15 @@ function makeDropdownHandler(row: PackagingTask) {
         <el-table-column label="操作" width="290" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="info" link size="small" @click="handleShowDetail(row)">详情</el-button>
-            <el-dropdown trigger="click" @command="makeDropdownHandler(row)">
-              <el-button type="info" link size="small">
-                检查项 <el-icon><ArrowDown /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="appearance">
-                    <el-icon><View /></el-icon> 外观检查
-                    <span v-if="row.appearanceChecked" class="item-ok">✓</span>
-                  </el-dropdown-item>
-                  <el-dropdown-item command="bellows" :disabled="!row.appearanceChecked">
-                    <el-icon><MagicStick /></el-icon> 波纹管包覆
-                    <span v-if="!row.appearanceChecked" class="item-lock">（需先通过外观）</span>
-                    <span v-else-if="row.bellowsCoverage" class="item-ok">✓</span>
-                  </el-dropdown-item>
-                  <el-dropdown-item command="label" :disabled="!row.appearanceChecked">
-                    <el-icon><Printer /></el-icon> 标签打印
-                    <span v-if="!row.appearanceChecked" class="item-lock">（需先通过外观）</span>
-                    <span v-else-if="row.labelPrinted" class="item-ok">✓</span>
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <el-button type="warning" link size="small" @click="handleAppearanceCheck(row)">
+              {{ row.appearanceChecked ? '外观✓' : '外观' }}
+            </el-button>
+            <el-button :type="canBellows(row) ? 'info' : 'info'" link size="small" :disabled="!canBellows(row)" @click="handleBellows(row)">
+              {{ row.bellowsCoverage ? '波纹✓' : '波纹' }}
+            </el-button>
+            <el-button type="info" link size="small" :disabled="!canLabel(row)" @click="handleLabelPrint(row)">
+              {{ row.labelPrinted ? '标签✓' : '标签' }}
+            </el-button>
             <el-button v-if="row.status === 'pending'" type="primary" link size="small" @click="handleStart(row)">
               开始
             </el-button>
@@ -743,9 +727,6 @@ function makeDropdownHandler(row: PackagingTask) {
 .text-success { color: #52c41a; font-weight: 500; }
 .text-warning { color: #faad14; font-weight: 500; }
 .text-muted { color: #8c8c8c; }
-
-.item-ok { color: #52c41a; font-weight: 600; margin-left: 8px; }
-.item-lock { color: #8c8c8c; font-size: 12px; margin-left: 8px; }
 
 .section-title {
   font-size: 14px;

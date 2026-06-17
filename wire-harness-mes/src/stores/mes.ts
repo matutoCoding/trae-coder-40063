@@ -86,6 +86,12 @@ export const useMESStore = defineStore('mes', () => {
   const appearanceCheckItems = ref<AppearanceCheckItem[]>([...mockAppearanceCheckItems])
   const dashboardStats = ref<DashboardStats>({ ...mockDashboardStats })
   const weeklyOutputData = ref([...mockWeeklyOutputData])
+  const monthlyOutputData = ref([
+    { day: '第1周', output: 2150, pass: 2110 },
+    { day: '第2周', output: 2380, pass: 2345 },
+    { day: '第3周', output: 2200, pass: 2175 },
+    { day: '第4周', output: 1950, pass: 1920 },
+  ])
   const processData = ref([...mockProcessData])
 
   const currentBOM = ref<BOM | null>(null)
@@ -460,6 +466,7 @@ export const useMESStore = defineStore('mes', () => {
     appearanceCheckItems,
     dashboardStats,
     weeklyOutputData,
+    monthlyOutputData,
     processData,
     currentBOM,
     pendingCuttingTasks,

@@ -18,13 +18,13 @@ const uploading = ref(false)
 const uploadFileList = ref<any[]>([])
 
 const excelPreviewData = ref<BOMItem[]>([])
-const excelInfo = ref({ productNo: '', productName: '', version: 'V1.0', totalQuantity: 100 })
+const excelInfo = ref({ productNo: '', productName: '', version: 'V1.0', totalQuantity: 0 })
 
 const manualForm = ref({
   productNo: '',
   productName: '',
   version: 'V1.0',
-  totalQuantity: 100,
+  totalQuantity: 0,
   items: [] as BOMItem[]
 })
 
@@ -60,12 +60,12 @@ function handleImport() {
   importType.value = 'excel'
   excelPreviewData.value = []
   uploadFileList.value.length = 0
-  excelInfo.value = { productNo: '', productName: '', version: 'V1.0', totalQuantity: 100 }
+  excelInfo.value = { productNo: '', productName: '', version: 'V1.0', totalQuantity: 0 }
   manualForm.value = {
     productNo: '',
     productName: '',
     version: 'V1.0',
-    totalQuantity: 100,
+    totalQuantity: 0,
     items: []
   }
 }
@@ -136,6 +136,10 @@ function handleExcelChange(uploadFile: any, fileList: any[]) {
         return
       }
 
+      const firstRow = jsonData[0]
+      const excelProductNo = String(firstRow['产品编号'] || firstRow['productNo'] || firstRow['ProductNo'] || '')
+      const excelProductName = String(firstRow['产品名称'] || firstRow['productName'] || firstRow['ProductName'] || '')
+
       const items: BOMItem[] = jsonData.map((row, idx) => ({
         id: `import_${Date.now()}_${idx}`,
         wireNo: String(row['线号'] || row['wireNo'] || row['WireNo'] || ''),
@@ -147,7 +151,7 @@ function handleExcelChange(uploadFile: any, fileList: any[]) {
         rightTerminal: String(row['右端端子'] || row['rightTerminal'] || row['RightTerminal'] || ''),
         leftWaterproof: String(row['左防水栓'] || row['leftWaterproof'] || ''),
         rightWaterproof: String(row['右防水栓'] || row['rightWaterproof'] || ''),
-        quantity: Number(row['数量'] || row['quantity'] || row['Qty'] || 100),
+        quantity: Number(row['数量'] || row['quantity'] || row['Qty'] || 1),
         remark: String(row['备注'] || row['remark'] || row['Remark'] || '')
       })).filter(it => it.wireNo)
 
@@ -159,9 +163,9 @@ function handleExcelChange(uploadFile: any, fileList: any[]) {
 
       excelPreviewData.value = items
       const fname = file.name.replace(/\.(xlsx|xls)$/i, '')
-      excelInfo.value.productName = excelInfo.value.productName || fname
-      excelInfo.value.productNo = excelInfo.value.productNo || `WH-IMP-${String(store.boms.length + 1).padStart(3, '0')}`
-      excelInfo.value.totalQuantity = items[0]?.quantity || 100
+      excelInfo.value.productNo = excelProductNo || excelInfo.value.productNo || `WH-IMP-${String(store.boms.length + 1).padStart(3, '0')}`
+      excelInfo.value.productName = excelProductName || excelInfo.value.productName || fname
+      excelInfo.value.totalQuantity = items.reduce((sum, i) => sum + i.quantity, 0)
       ElMessage.success(`成功解析 ${items.length} 条BOM明细`)
     } catch (err: any) {
       console.error(err)
@@ -185,7 +189,7 @@ function addManualRow() {
     rightTerminal: '',
     leftWaterproof: '',
     rightWaterproof: '',
-    quantity: 100,
+    quantity: 1,
     remark: ''
   })
 }
@@ -206,7 +210,7 @@ function confirmImport() {
       ElMessage.warning('请填写产品编号和产品名称')
       return
     }
-    const totalQty = Math.max(...excelPreviewData.value.map(i => i.quantity), 100)
+    const totalQty = excelPreviewData.value.reduce((s, i) => s + i.quantity, 0)
     newBOM = {
       id: `bom_${Date.now()}`,
       productNo: excelInfo.value.productNo,
@@ -232,7 +236,7 @@ function confirmImport() {
       ElMessage.warning('每条明细必须填写线号')
       return
     }
-    const totalQty = Math.max(...manualForm.value.items.map(i => i.quantity), 100)
+    const totalQty = manualForm.value.items.reduce((s, i) => s + i.quantity, 0)
     newBOM = {
       id: `bom_${Date.now()}`,
       productNo: manualForm.value.productNo,
@@ -375,6 +379,9 @@ const tableColumns = [
               </el-form-item>
               <el-form-item label="版本">
                 <el-input v-model="excelInfo.version" style="width: 120px" />
+              </el-form-item>
+              <el-form-item v-if="excelPreviewData.length > 0" label="总数量">
+                <el-tag type="primary" size="large">{{ excelPreviewData.reduce((s, i) => s + i.quantity, 0) }}</el-tag>
               </el-form-item>
             </el-form>
           </div>
