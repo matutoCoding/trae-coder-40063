@@ -7,6 +7,7 @@ export interface WireMaterial {
   crossSection: number
   unitPrice: number
   stock: number
+  occupiedQty: number
 }
 
 export interface TerminalMaterial {
@@ -20,6 +21,7 @@ export interface TerminalMaterial {
   tensileStrength: number
   unitPrice: number
   stock: number
+  occupiedQty: number
 }
 
 export interface SheathMaterial {
@@ -30,6 +32,7 @@ export interface SheathMaterial {
   applicableTerminals: string[]
   unitPrice: number
   stock: number
+  occupiedQty: number
 }
 
 export interface WaterproofPlug {
@@ -39,6 +42,35 @@ export interface WaterproofPlug {
   applicableWire: string[]
   unitPrice: number
   stock: number
+  occupiedQty: number
+}
+
+export interface ProductionBatch {
+  id: string
+  batchNo: string
+  bomId: string
+  productNo: string
+  productName: string
+  productQuantity: number
+  status: 'pending' | 'producing' | 'completed' | 'cancelled'
+  createTime: string
+  completeTime?: string
+}
+
+export type MaterialType = 'wire' | 'terminal' | 'waterproof'
+
+export interface MaterialReservation {
+  id: string
+  batchId: string
+  batchNo: string
+  materialType: MaterialType
+  materialNo: string
+  wireNos?: string[]
+  requiredQty: number
+  reservedQty: number
+  status: 'reserved' | 'consumed' | 'released'
+  createTime: string
+  remark?: string
 }
 
 export interface BOMItem {
@@ -73,6 +105,8 @@ export interface BOM {
 export interface CuttingTask {
   id: string
   bomId: string
+  batchId: string
+  batchNo: string
   productNo: string
   wireNo: string
   wireType: string
@@ -106,6 +140,8 @@ export interface CrimpingRecord {
 export interface CrimpingTask {
   id: string
   bomId: string
+  batchId: string
+  batchNo: string
   productNo: string
   wireNo: string
   terminalNo: string
@@ -124,6 +160,8 @@ export interface CrimpingTask {
 export interface PreAssemblyTask {
   id: string
   bomId: string
+  batchId: string
+  batchNo: string
   productNo: string
   wireNo: string
   waterproofPlug: string
@@ -138,6 +176,8 @@ export interface PreAssemblyTask {
 export interface AssemblyTask {
   id: string
   bomId: string
+  batchId: string
+  batchNo: string
   productNo: string
   sheathNo: string
   holePosition: string
@@ -204,6 +244,8 @@ export interface ConductorTestRecord {
 export interface ConductorTestTask {
   id: string
   bomId: string
+  batchId: string
+  batchNo: string
   productNo: string
   quantity: number
   completed: number
@@ -226,6 +268,8 @@ export interface AppearanceCheckItem {
 export interface PackagingTask {
   id: string
   bomId: string
+  batchId: string
+  batchNo: string
   productNo: string
   quantity: number
   completed: number
@@ -250,4 +294,14 @@ export interface DashboardStats {
   inProgressTasks: number
   completedTasks: number
   bomCount: number
+}
+
+export interface MaterialShortageDetail {
+  materialType: MaterialType
+  materialNo: string
+  neededQty: number
+  stockQty: number
+  shortageQty: number
+  affectedWireNos: string[]
+  unit: string
 }

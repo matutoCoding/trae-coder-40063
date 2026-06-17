@@ -48,7 +48,8 @@ const filteredTasks = computed(() => {
   }
   if (searchKeyword.value) {
     tasks = tasks.filter(t =>
-      t.productNo.includes(searchKeyword.value)
+      t.productNo.includes(searchKeyword.value) ||
+      (t.batchNo && t.batchNo.includes(searchKeyword.value))
     )
   }
   return tasks
@@ -339,7 +340,7 @@ function canLabel(task: PackagingTask) {
         <div class="toolbar-right">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索产品编号"
+            placeholder="搜索产品编号/批次号"
             style="width: 220px"
             clearable
           >
@@ -352,6 +353,12 @@ function canLabel(task: PackagingTask) {
 
       <el-table :data="filteredTasks" style="width: 100%" stripe>
         <el-table-column type="index" label="#" width="50" align="center" />
+        <el-table-column label="批次号" width="160">
+          <template #default="{ row }">
+            <el-tag v-if="row.batchNo" type="primary" size="small" effect="plain">{{ row.batchNo }}</el-tag>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="productNo" label="产品编号" width="130" />
         <el-table-column prop="packageSpec" label="包装规格" width="100" />
         <el-table-column prop="labelTemplate" label="标签模板" width="130" />

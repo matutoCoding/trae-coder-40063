@@ -11,50 +11,78 @@ import type {
   ConductorTestTask,
   PackagingTask,
   AppearanceCheckItem,
-  DashboardStats
+  DashboardStats,
+  ProductionBatch,
+  MaterialReservation
 } from '../types'
 
 export const mockWires: WireMaterial[] = [
-  { id: 'w1', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', spec: '0.5mm²', crossSection: 0.5, unitPrice: 1.2, stock: 50000 },
-  { id: 'w2', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', spec: '0.5mm²', crossSection: 0.5, unitPrice: 1.2, stock: 60000 },
-  { id: 'w3', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', spec: '0.75mm²', crossSection: 0.75, unitPrice: 1.8, stock: 40000 },
-  { id: 'w4', wireNo: 'AVSS-1.0', wireType: 'AVSS', color: '绿色', spec: '1.0mm²', crossSection: 1.0, unitPrice: 2.5, stock: 30000 },
-  { id: 'w5', wireNo: 'AVSS-1.5', wireType: 'AVSS', color: '蓝色', spec: '1.5mm²', crossSection: 1.5, unitPrice: 3.2, stock: 25000 },
-  { id: 'w6', wireNo: 'AVSS-2.0', wireType: 'AVSS', color: '白色', spec: '2.0mm²', crossSection: 2.0, unitPrice: 4.5, stock: 20000 },
-  { id: 'w7', wireNo: 'FLRY-B-0.5', wireType: 'FLRY-B', color: '红色', spec: '0.5mm²', crossSection: 0.5, unitPrice: 1.5, stock: 35000 },
-  { id: 'w8', wireNo: 'FLRY-B-0.75', wireType: 'FLRY-B', color: '黑色', spec: '0.75mm²', crossSection: 0.75, unitPrice: 2.2, stock: 45000 },
+  { id: 'w1', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', spec: '0.5mm²', crossSection: 0.5, unitPrice: 1.2, stock: 50000, occupiedQty: 0 },
+  { id: 'w2', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', spec: '0.5mm²', crossSection: 0.5, unitPrice: 1.2, stock: 60000, occupiedQty: 0 },
+  { id: 'w3', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', spec: '0.75mm²', crossSection: 0.75, unitPrice: 1.8, stock: 40000, occupiedQty: 0 },
+  { id: 'w4', wireNo: 'AVSS-1.0', wireType: 'AVSS', color: '绿色', spec: '1.0mm²', crossSection: 1.0, unitPrice: 2.5, stock: 30000, occupiedQty: 0 },
+  { id: 'w5', wireNo: 'AVSS-1.5', wireType: 'AVSS', color: '蓝色', spec: '1.5mm²', crossSection: 1.5, unitPrice: 3.2, stock: 25000, occupiedQty: 0 },
+  { id: 'w6', wireNo: 'AVSS-2.0', wireType: 'AVSS', color: '白色', spec: '2.0mm²', crossSection: 2.0, unitPrice: 4.5, stock: 20000, occupiedQty: 0 },
+  { id: 'w7', wireNo: 'FLRY-B-0.5', wireType: 'FLRY-B', color: '红色', spec: '0.5mm²', crossSection: 0.5, unitPrice: 1.5, stock: 35000, occupiedQty: 0 },
+  { id: 'w8', wireNo: 'FLRY-B-0.75', wireType: 'FLRY-B', color: '黑色', spec: '0.75mm²', crossSection: 0.75, unitPrice: 2.2, stock: 45000, occupiedQty: 0 },
 ]
 
 export const mockTerminals: TerminalMaterial[] = [
-  { id: 't1', terminalNo: '1.5系列-公端', terminalType: '公端', spec: '1.5mm', applicableWire: ['AVSS-0.5', 'AVSS-0.75', 'AVSS-1.0'], crimpHeight: 1.5, crimpHeightTolerance: 0.1, tensileStrength: 50, unitPrice: 0.3, stock: 100000 },
-  { id: 't2', terminalNo: '1.5系列-母端', terminalType: '母端', spec: '1.5mm', applicableWire: ['AVSS-0.5', 'AVSS-0.75', 'AVSS-1.0'], crimpHeight: 1.5, crimpHeightTolerance: 0.1, tensileStrength: 50, unitPrice: 0.32, stock: 100000 },
-  { id: 't3', terminalNo: '2.8系列-公端', terminalType: '公端', spec: '2.8mm', applicableWire: ['AVSS-0.75', 'AVSS-1.0', 'AVSS-1.5'], crimpHeight: 2.8, crimpHeightTolerance: 0.15, tensileStrength: 80, unitPrice: 0.45, stock: 80000 },
-  { id: 't4', terminalNo: '2.8系列-母端', terminalType: '母端', spec: '2.8mm', applicableWire: ['AVSS-0.75', 'AVSS-1.0', 'AVSS-1.5'], crimpHeight: 2.8, crimpHeightTolerance: 0.15, tensileStrength: 80, unitPrice: 0.48, stock: 80000 },
-  { id: 't5', terminalNo: '4.8系列-公端', terminalType: '公端', spec: '4.8mm', applicableWire: ['AVSS-1.0', 'AVSS-1.5', 'AVSS-2.0'], crimpHeight: 4.8, crimpHeightTolerance: 0.2, tensileStrength: 120, unitPrice: 0.65, stock: 60000 },
-  { id: 't6', terminalNo: '4.8系列-母端', terminalType: '母端', spec: '4.8mm', applicableWire: ['AVSS-1.0', 'AVSS-1.5', 'AVSS-2.0'], crimpHeight: 4.8, crimpHeightTolerance: 0.2, tensileStrength: 120, unitPrice: 0.68, stock: 60000 },
-  { id: 't7', terminalNo: '6.3系列-公端', terminalType: '公端', spec: '6.3mm', applicableWire: ['AVSS-1.5', 'AVSS-2.0'], crimpHeight: 6.3, crimpHeightTolerance: 0.25, tensileStrength: 150, unitPrice: 0.85, stock: 40000 },
-  { id: 't8', terminalNo: '6.3系列-母端', terminalType: '母端', spec: '6.3mm', applicableWire: ['AVSS-1.5', 'AVSS-2.0'], crimpHeight: 6.3, crimpHeightTolerance: 0.25, tensileStrength: 150, unitPrice: 0.88, stock: 40000 },
+  { id: 't1', terminalNo: '1.5系列-公端', terminalType: '公端', spec: '1.5mm', applicableWire: ['AVSS-0.5', 'AVSS-0.75', 'AVSS-1.0'], crimpHeight: 1.5, crimpHeightTolerance: 0.1, tensileStrength: 50, unitPrice: 0.3, stock: 100000, occupiedQty: 0 },
+  { id: 't2', terminalNo: '1.5系列-母端', terminalType: '母端', spec: '1.5mm', applicableWire: ['AVSS-0.5', 'AVSS-0.75', 'AVSS-1.0'], crimpHeight: 1.5, crimpHeightTolerance: 0.1, tensileStrength: 50, unitPrice: 0.32, stock: 100000, occupiedQty: 0 },
+  { id: 't3', terminalNo: '2.8系列-公端', terminalType: '公端', spec: '2.8mm', applicableWire: ['AVSS-0.75', 'AVSS-1.0', 'AVSS-1.5'], crimpHeight: 2.8, crimpHeightTolerance: 0.15, tensileStrength: 80, unitPrice: 0.45, stock: 80000, occupiedQty: 0 },
+  { id: 't4', terminalNo: '2.8系列-母端', terminalType: '母端', spec: '2.8mm', applicableWire: ['AVSS-0.75', 'AVSS-1.0', 'AVSS-1.5'], crimpHeight: 2.8, crimpHeightTolerance: 0.15, tensileStrength: 80, unitPrice: 0.48, stock: 80000, occupiedQty: 0 },
+  { id: 't5', terminalNo: '4.8系列-公端', terminalType: '公端', spec: '4.8mm', applicableWire: ['AVSS-1.0', 'AVSS-1.5', 'AVSS-2.0'], crimpHeight: 4.8, crimpHeightTolerance: 0.2, tensileStrength: 120, unitPrice: 0.65, stock: 60000, occupiedQty: 0 },
+  { id: 't6', terminalNo: '4.8系列-母端', terminalType: '母端', spec: '4.8mm', applicableWire: ['AVSS-1.0', 'AVSS-1.5', 'AVSS-2.0'], crimpHeight: 4.8, crimpHeightTolerance: 0.2, tensileStrength: 120, unitPrice: 0.68, stock: 60000, occupiedQty: 0 },
+  { id: 't7', terminalNo: '6.3系列-公端', terminalType: '公端', spec: '6.3mm', applicableWire: ['AVSS-1.5', 'AVSS-2.0'], crimpHeight: 6.3, crimpHeightTolerance: 0.25, tensileStrength: 150, unitPrice: 0.85, stock: 40000, occupiedQty: 0 },
+  { id: 't8', terminalNo: '6.3系列-母端', terminalType: '母端', spec: '6.3mm', applicableWire: ['AVSS-1.5', 'AVSS-2.0'], crimpHeight: 6.3, crimpHeightTolerance: 0.25, tensileStrength: 150, unitPrice: 0.88, stock: 40000, occupiedQty: 0 },
 ]
 
 export const mockSheaths: SheathMaterial[] = [
-  { id: 's1', sheathNo: 'DJ7021-1.5-11', sheathType: '公护套', holeCount: 2, applicableTerminals: ['1.5系列-公端'], unitPrice: 1.2, stock: 50000 },
-  { id: 's2', sheathNo: 'DJ7021-1.5-21', sheathType: '母护套', holeCount: 2, applicableTerminals: ['1.5系列-母端'], unitPrice: 1.25, stock: 50000 },
-  { id: 's3', sheathNo: 'DJ7041-1.5-11', sheathType: '公护套', holeCount: 4, applicableTerminals: ['1.5系列-公端'], unitPrice: 2.5, stock: 40000 },
-  { id: 's4', sheathNo: 'DJ7041-1.5-21', sheathType: '母护套', holeCount: 4, applicableTerminals: ['1.5系列-母端'], unitPrice: 2.6, stock: 40000 },
-  { id: 's5', sheathNo: 'DJ7061-2.8-11', sheathType: '公护套', holeCount: 6, applicableTerminals: ['2.8系列-公端'], unitPrice: 4.2, stock: 30000 },
-  { id: 's6', sheathNo: 'DJ7061-2.8-21', sheathType: '母护套', holeCount: 6, applicableTerminals: ['2.8系列-母端'], unitPrice: 4.3, stock: 30000 },
-  { id: 's7', sheathNo: 'DJ7101-2.8-11', sheathType: '公护套', holeCount: 10, applicableTerminals: ['2.8系列-公端'], unitPrice: 6.8, stock: 20000 },
-  { id: 's8', sheathNo: 'DJ7161-2.8-21', sheathType: '母护套', holeCount: 16, applicableTerminals: ['2.8系列-母端'], unitPrice: 8.5, stock: 15000 },
+  { id: 's1', sheathNo: 'DJ7021-1.5-11', sheathType: '公护套', holeCount: 2, applicableTerminals: ['1.5系列-公端'], unitPrice: 1.2, stock: 50000, occupiedQty: 0 },
+  { id: 's2', sheathNo: 'DJ7021-1.5-21', sheathType: '母护套', holeCount: 2, applicableTerminals: ['1.5系列-母端'], unitPrice: 1.25, stock: 50000, occupiedQty: 0 },
+  { id: 's3', sheathNo: 'DJ7041-1.5-11', sheathType: '公护套', holeCount: 4, applicableTerminals: ['1.5系列-公端'], unitPrice: 2.5, stock: 40000, occupiedQty: 0 },
+  { id: 's4', sheathNo: 'DJ7041-1.5-21', sheathType: '母护套', holeCount: 4, applicableTerminals: ['1.5系列-母端'], unitPrice: 2.6, stock: 40000, occupiedQty: 0 },
+  { id: 's5', sheathNo: 'DJ7061-2.8-11', sheathType: '公护套', holeCount: 6, applicableTerminals: ['2.8系列-公端'], unitPrice: 4.2, stock: 30000, occupiedQty: 0 },
+  { id: 's6', sheathNo: 'DJ7061-2.8-21', sheathType: '母护套', holeCount: 6, applicableTerminals: ['2.8系列-母端'], unitPrice: 4.3, stock: 30000, occupiedQty: 0 },
+  { id: 's7', sheathNo: 'DJ7101-2.8-11', sheathType: '公护套', holeCount: 10, applicableTerminals: ['2.8系列-公端'], unitPrice: 6.8, stock: 20000, occupiedQty: 0 },
+  { id: 's8', sheathNo: 'DJ7161-2.8-21', sheathType: '母护套', holeCount: 16, applicableTerminals: ['2.8系列-母端'], unitPrice: 8.5, stock: 15000, occupiedQty: 0 },
 ]
 
 export const mockWaterproofPlugs: WaterproofPlug[] = [
-  { id: 'wp1', plugNo: 'WPD-1.5', plugType: '硅胶防水栓', applicableWire: ['AVSS-0.5', 'AVSS-0.75'], unitPrice: 0.15, stock: 200000 },
-  { id: 'wp2', plugNo: 'WPD-2.0', plugType: '硅胶防水栓', applicableWire: ['AVSS-0.75', 'AVSS-1.0'], unitPrice: 0.18, stock: 150000 },
-  { id: 'wp3', plugNo: 'WPD-2.8', plugType: '硅胶防水栓', applicableWire: ['AVSS-1.0', 'AVSS-1.5'], unitPrice: 0.22, stock: 100000 },
-  { id: 'wp4', plugNo: 'WPD-4.8', plugType: '硅胶防水栓', applicableWire: ['AVSS-1.5', 'AVSS-2.0'], unitPrice: 0.3, stock: 80000 },
-  { id: 'wp5', plugNo: 'WPR-1.5', plugType: '橡胶防水圈', applicableWire: ['AVSS-0.5', 'AVSS-0.75'], unitPrice: 0.12, stock: 180000 },
-  { id: 'wp6', plugNo: 'WPR-2.8', plugType: '橡胶防水圈', applicableWire: ['AVSS-1.0', 'AVSS-1.5'], unitPrice: 0.18, stock: 120000 },
+  { id: 'wp1', plugNo: 'WPD-1.5', plugType: '硅胶防水栓', applicableWire: ['AVSS-0.5', 'AVSS-0.75'], unitPrice: 0.15, stock: 200000, occupiedQty: 0 },
+  { id: 'wp2', plugNo: 'WPD-2.0', plugType: '硅胶防水栓', applicableWire: ['AVSS-0.75', 'AVSS-1.0'], unitPrice: 0.18, stock: 150000, occupiedQty: 0 },
+  { id: 'wp3', plugNo: 'WPD-2.8', plugType: '硅胶防水栓', applicableWire: ['AVSS-1.0', 'AVSS-1.5'], unitPrice: 0.22, stock: 100000, occupiedQty: 0 },
+  { id: 'wp4', plugNo: 'WPD-4.8', plugType: '硅胶防水栓', applicableWire: ['AVSS-1.5', 'AVSS-2.0'], unitPrice: 0.3, stock: 80000, occupiedQty: 0 },
+  { id: 'wp5', plugNo: 'WPR-1.5', plugType: '橡胶防水圈', applicableWire: ['AVSS-0.5', 'AVSS-0.75'], unitPrice: 0.12, stock: 180000, occupiedQty: 0 },
+  { id: 'wp6', plugNo: 'WPR-2.8', plugType: '橡胶防水圈', applicableWire: ['AVSS-1.0', 'AVSS-1.5'], unitPrice: 0.18, stock: 120000, occupiedQty: 0 },
 ]
+
+export const mockBatches: ProductionBatch[] = [
+  {
+    id: 'batch001',
+    batchNo: 'PC20240115-001',
+    bomId: 'bom001',
+    productNo: 'WH-2024-001',
+    productName: '发动机舱线束总成',
+    productQuantity: 500,
+    status: 'producing',
+    createTime: '2024-01-15 10:00:00'
+  },
+  {
+    id: 'batch003',
+    batchNo: 'PC20240310-001',
+    bomId: 'bom003',
+    productNo: 'WH-2024-003',
+    productName: '车门线束总成',
+    productQuantity: 800,
+    status: 'completed',
+    createTime: '2024-03-10 11:00:00',
+    completeTime: '2024-03-22 18:00:00'
+  }
+]
+
+export const mockReservations: MaterialReservation[] = []
 
 export const mockBOMs: BOM[] = [
   {
@@ -127,19 +155,26 @@ export const mockBOMs: BOM[] = [
   }
 ]
 
+const B001 = 'batch001'
+const BN001 = 'PC20240115-001'
+const B003 = 'batch003'
+const BN003 = 'PC20240310-001'
+
 export const mockCuttingTasks: CuttingTask[] = [
-  { id: 'cut001', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', crossSection: 0.5, totalLength: 450, stripLeft: 8, stripRight: 8, quantity: 500, completed: 500, status: 'completed', createTime: '2024-01-16 08:00:00', operator: '张工', machine: '裁线机-01' },
-  { id: 'cut002', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', crossSection: 0.5, totalLength: 380, stripLeft: 8, stripRight: 8, quantity: 500, completed: 500, status: 'completed', createTime: '2024-01-16 09:30:00', operator: '张工', machine: '裁线机-01' },
-  { id: 'cut003', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', crossSection: 0.75, totalLength: 520, stripLeft: 10, stripRight: 10, quantity: 500, completed: 320, status: 'processing', createTime: '2024-01-16 11:00:00', operator: '李工', machine: '裁线机-02' },
-  { id: 'cut004', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-1.0', wireType: 'AVSS', color: '绿色', crossSection: 1.0, totalLength: 600, stripLeft: 10, stripRight: 10, quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-16 11:00:00', operator: '', machine: '' },
-  { id: 'cut005', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-1.5', wireType: 'AVSS', color: '蓝色', crossSection: 1.5, totalLength: 350, stripLeft: 12, stripRight: 12, quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-16 11:00:00', operator: '', machine: '' },
-  { id: 'cut006', bomId: 'bom002', productNo: 'WH-2024-002', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', crossSection: 0.5, totalLength: 300, stripLeft: 8, stripRight: 8, quantity: 300, completed: 0, status: 'pending', createTime: '2024-02-21 08:00:00', operator: '', machine: '' },
-  { id: 'cut007', bomId: 'bom002', productNo: 'WH-2024-002', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', crossSection: 0.5, totalLength: 280, stripLeft: 8, stripRight: 8, quantity: 300, completed: 0, status: 'pending', createTime: '2024-02-21 08:00:00', operator: '', machine: '' },
+  { id: 'cut001', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', crossSection: 0.5, totalLength: 450, stripLeft: 8, stripRight: 8, quantity: 500, completed: 500, status: 'completed', createTime: '2024-01-16 08:00:00', operator: '张工', machine: '裁线机-01' },
+  { id: 'cut002', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', crossSection: 0.5, totalLength: 380, stripLeft: 8, stripRight: 8, quantity: 500, completed: 500, status: 'completed', createTime: '2024-01-16 09:30:00', operator: '张工', machine: '裁线机-01' },
+  { id: 'cut003', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', crossSection: 0.75, totalLength: 520, stripLeft: 10, stripRight: 10, quantity: 500, completed: 320, status: 'processing', createTime: '2024-01-16 11:00:00', operator: '李工', machine: '裁线机-02' },
+  { id: 'cut004', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-1.0', wireType: 'AVSS', color: '绿色', crossSection: 1.0, totalLength: 600, stripLeft: 10, stripRight: 10, quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-16 11:00:00', operator: '', machine: '' },
+  { id: 'cut005', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-1.5', wireType: 'AVSS', color: '蓝色', crossSection: 1.5, totalLength: 350, stripLeft: 12, stripRight: 12, quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-16 11:00:00', operator: '', machine: '' },
+  { id: 'cut006', bomId: 'bom003', batchId: B003, batchNo: BN003, productNo: 'WH-2024-003', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', crossSection: 0.5, totalLength: 200, stripLeft: 8, stripRight: 8, quantity: 800, completed: 800, status: 'completed', createTime: '2024-03-11 08:00:00', operator: '张工', machine: '裁线机-01' },
+  { id: 'cut007', bomId: 'bom003', batchId: B003, batchNo: BN003, productNo: 'WH-2024-003', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', crossSection: 0.5, totalLength: 200, stripLeft: 8, stripRight: 8, quantity: 800, completed: 800, status: 'completed', createTime: '2024-03-11 09:30:00', operator: '张工', machine: '裁线机-01' },
+  { id: 'cut008', bomId: 'bom003', batchId: B003, batchNo: BN003, productNo: 'WH-2024-003', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', crossSection: 0.75, totalLength: 180, stripLeft: 10, stripRight: 10, quantity: 800, completed: 800, status: 'completed', createTime: '2024-03-11 11:00:00', operator: '李工', machine: '裁线机-02' },
+  { id: 'cut009', bomId: 'bom003', batchId: B003, batchNo: BN003, productNo: 'WH-2024-003', wireNo: 'AVSS-1.0', wireType: 'AVSS', color: '绿色', crossSection: 1.0, totalLength: 220, stripLeft: 10, stripRight: 10, quantity: 800, completed: 800, status: 'completed', createTime: '2024-03-11 11:00:00', operator: '李工', machine: '裁线机-02' },
 ]
 
 export const mockCrimpingTasks: CrimpingTask[] = [
   {
-    id: 'crimp001', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-公端', side: 'left',
+    id: 'crimp001', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-公端', side: 'left',
     quantity: 500, completed: 500, status: 'completed', standardHeight: 1.5, minTensile: 50,
     createTime: '2024-01-17 08:00:00', operator: '王工', machine: '压接机-01',
     records: [
@@ -149,7 +184,7 @@ export const mockCrimpingTasks: CrimpingTask[] = [
     ]
   },
   {
-    id: 'crimp002', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-母端', side: 'right',
+    id: 'crimp002', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-母端', side: 'right',
     quantity: 500, completed: 500, status: 'completed', standardHeight: 1.5, minTensile: 50,
     createTime: '2024-01-17 13:00:00', operator: '王工', machine: '压接机-01',
     records: [
@@ -158,7 +193,7 @@ export const mockCrimpingTasks: CrimpingTask[] = [
     ]
   },
   {
-    id: 'crimp003', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-0.5-BK', terminalNo: '1.5系列-公端', side: 'left',
+    id: 'crimp003', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-0.5-BK', terminalNo: '1.5系列-公端', side: 'left',
     quantity: 500, completed: 280, status: 'processing', standardHeight: 1.5, minTensile: 50,
     createTime: '2024-01-18 08:00:00', operator: '赵工', machine: '压接机-02',
     records: [
@@ -166,34 +201,46 @@ export const mockCrimpingTasks: CrimpingTask[] = [
     ]
   },
   {
-    id: 'crimp004', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-0.75', terminalNo: '2.8系列-公端', side: 'left',
+    id: 'crimp004', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-0.75', terminalNo: '2.8系列-公端', side: 'left',
     quantity: 500, completed: 0, status: 'pending', standardHeight: 2.8, minTensile: 80,
     createTime: '2024-01-18 10:00:00', operator: '', machine: '',
     records: []
   },
+  {
+    id: 'crimp005', bomId: 'bom003', batchId: B003, batchNo: BN003, productNo: 'WH-2024-003', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-公端', side: 'left',
+    quantity: 800, completed: 800, status: 'completed', standardHeight: 1.5, minTensile: 50,
+    createTime: '2024-03-12 08:00:00', operator: '王工', machine: '压接机-01', records: []
+  },
+  {
+    id: 'crimp006', bomId: 'bom003', batchId: B003, batchNo: BN003, productNo: 'WH-2024-003', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-母端', side: 'right',
+    quantity: 800, completed: 800, status: 'completed', standardHeight: 1.5, minTensile: 50,
+    createTime: '2024-03-12 10:00:00', operator: '王工', machine: '压接机-01', records: []
+  },
 ]
 
 export const mockPreAssemblyTasks: PreAssemblyTask[] = [
-  { id: 'pre001', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-0.5', waterproofPlug: 'WPD-1.5', side: 'both', quantity: 500, completed: 500, status: 'completed', createTime: '2024-01-18 14:00:00', operator: '刘工' },
-  { id: 'pre002', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-0.5-BK', waterproofPlug: 'WPD-1.5', side: 'both', quantity: 500, completed: 350, status: 'processing', createTime: '2024-01-19 08:00:00', operator: '刘工' },
-  { id: 'pre003', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-0.75', waterproofPlug: 'WPD-2.8', side: 'both', quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-19 10:00:00', operator: '' },
-  { id: 'pre004', bomId: 'bom001', productNo: 'WH-2024-001', wireNo: 'AVSS-1.0', waterproofPlug: 'WPD-2.8', side: 'both', quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-19 10:00:00', operator: '' },
+  { id: 'pre001', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-0.5', waterproofPlug: 'WPD-1.5', side: 'both', quantity: 500, completed: 500, status: 'completed', createTime: '2024-01-18 14:00:00', operator: '刘工' },
+  { id: 'pre002', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-0.5-BK', waterproofPlug: 'WPD-1.5', side: 'both', quantity: 500, completed: 350, status: 'processing', createTime: '2024-01-19 08:00:00', operator: '刘工' },
+  { id: 'pre003', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-0.75', waterproofPlug: 'WPD-2.8', side: 'both', quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-19 10:00:00', operator: '' },
+  { id: 'pre004', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', wireNo: 'AVSS-1.0', waterproofPlug: 'WPD-2.8', side: 'both', quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-19 10:00:00', operator: '' },
+  { id: 'pre005', bomId: 'bom003', batchId: B003, batchNo: BN003, productNo: 'WH-2024-003', wireNo: 'AVSS-0.5', waterproofPlug: 'WPD-1.5', side: 'left', quantity: 800, completed: 800, status: 'completed', createTime: '2024-03-13 08:00:00', operator: '刘工' },
 ]
 
 export const mockAssemblyTasks: AssemblyTask[] = [
-  { id: 'asm001', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '1#孔', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-公端', quantity: 500, completed: 200, status: 'processing', createTime: '2024-01-20 08:00:00', operator: '陈工', retainForcePassed: true, retainForceRecords: [
+  { id: 'asm001', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '1#孔', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-公端', quantity: 500, completed: 200, status: 'processing', createTime: '2024-01-20 08:00:00', operator: '陈工', retainForcePassed: true, retainForceRecords: [
     { id: 'rf1', taskId: 'asm001', testNo: 'RF-2024-001', sampleIndex: 1, retainForce: 65, standardForce: 50, wireNo: 'AVSS-0.5', sheathNo: 'DJ7061-2.8-11', holePosition: '1#孔', operator: '陈工', testTime: '2024-01-20 10:00:00', result: 'pass', remark: '首件检测合格' }
   ] },
-  { id: 'asm002', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '2#孔', wireNo: 'AVSS-0.5-BK', terminalNo: '1.5系列-公端', quantity: 500, completed: 150, status: 'processing', createTime: '2024-01-20 08:00:00', operator: '陈工', retainForcePassed: false, retainForceRecords: [] },
-  { id: 'asm003', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '3#孔', wireNo: 'AVSS-0.75', terminalNo: '2.8系列-公端', quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-20 08:00:00', operator: '', retainForcePassed: false, retainForceRecords: [] },
-  { id: 'asm004', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-21', holePosition: '1#孔', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-母端', quantity: 500, completed: 180, status: 'processing', createTime: '2024-01-20 09:00:00', operator: '周工', retainForcePassed: true, retainForceRecords: [
+  { id: 'asm002', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '2#孔', wireNo: 'AVSS-0.5-BK', terminalNo: '1.5系列-公端', quantity: 500, completed: 150, status: 'processing', createTime: '2024-01-20 08:00:00', operator: '陈工', retainForcePassed: false, retainForceRecords: [] },
+  { id: 'asm003', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '3#孔', wireNo: 'AVSS-0.75', terminalNo: '2.8系列-公端', quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-20 08:00:00', operator: '', retainForcePassed: false, retainForceRecords: [] },
+  { id: 'asm004', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-21', holePosition: '1#孔', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-母端', quantity: 500, completed: 180, status: 'processing', createTime: '2024-01-20 09:00:00', operator: '周工', retainForcePassed: true, retainForceRecords: [
     { id: 'rf2', taskId: 'asm004', testNo: 'RF-2024-002', sampleIndex: 1, retainForce: 58, standardForce: 50, wireNo: 'AVSS-0.5', sheathNo: 'DJ7061-2.8-21', holePosition: '1#孔', operator: '周工', testTime: '2024-01-20 10:30:00', result: 'pass', remark: '首件检测合格' }
   ] },
+  { id: 'asm005', bomId: 'bom003', batchId: B003, batchNo: BN003, productNo: 'WH-2024-003', sheathNo: 'DJ7041-1.5-11', holePosition: '1#-4#', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-公端', quantity: 800, completed: 800, status: 'completed', createTime: '2024-03-15 08:00:00', operator: '陈工', retainForcePassed: true, retainForceRecords: [] },
 ]
 
 export const mockConductorTestTasks: ConductorTestTask[] = [
   {
-    id: 'test001', bomId: 'bom003', productNo: 'WH-2024-003', quantity: 800, completed: 800, passCount: 792, failCount: 8,
+    id: 'test001', bomId: 'bom003', batchId: B003, batchNo: BN003, productNo: 'WH-2024-003', quantity: 800, completed: 800, passCount: 792, failCount: 8,
     status: 'completed', createTime: '2024-03-20 08:00:00', operator: '吴工',
     records: [
       { id: 'trec1', taskId: 'test001', productNo: 'WH-2024-003', testPoint1: 'DJ7021-1.5-11/1#', testPoint2: 'DJ7021-1.5-21/1#', resistance: 0.05, insulationResistance: 1000, voltage: 500, testTime: '2024-03-20 08:30:00', operator: '吴工', result: 'pass' },
@@ -202,17 +249,17 @@ export const mockConductorTestTasks: ConductorTestTask[] = [
     ]
   },
   {
-    id: 'test002', bomId: 'bom001', productNo: 'WH-2024-001', quantity: 500, completed: 0, passCount: 0, failCount: 0,
+    id: 'test002', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', quantity: 500, completed: 0, passCount: 0, failCount: 0,
     status: 'pending', createTime: '2024-01-22 08:00:00', operator: '',
     records: []
   },
 ]
 
 export const mockPackagingTasks: PackagingTask[] = [
-  { id: 'pkg001', bomId: 'bom003', productNo: 'WH-2024-003', quantity: 800, completed: 750, bellowsCoverage: true, labelPrinted: true, appearanceChecked: true, status: 'processing', createTime: '2024-03-21 08:00:00', operator: '郑工', packageSpec: '50条/箱', labelTemplate: '标准标签模板A', appearanceRecords: [], labelPrintRecords: [
+  { id: 'pkg001', bomId: 'bom003', batchId: B003, batchNo: BN003, productNo: 'WH-2024-003', quantity: 800, completed: 750, bellowsCoverage: true, labelPrinted: true, appearanceChecked: true, status: 'processing', createTime: '2024-03-21 08:00:00', operator: '郑工', packageSpec: '50条/箱', labelTemplate: '标准标签模板A', appearanceRecords: [], labelPrintRecords: [
     { id: 'lp1', taskId: 'pkg001', printCount: 500, labelTemplate: '标准标签模板A', operator: '郑工', printTime: '2024-03-21 14:00:00' }
   ] },
-  { id: 'pkg002', bomId: 'bom001', productNo: 'WH-2024-001', quantity: 500, completed: 0, bellowsCoverage: false, labelPrinted: false, appearanceChecked: false, status: 'pending', createTime: '2024-01-23 08:00:00', operator: '', packageSpec: '30条/箱', labelTemplate: '标准标签模板B', appearanceRecords: [], labelPrintRecords: [] },
+  { id: 'pkg002', bomId: 'bom001', batchId: B001, batchNo: BN001, productNo: 'WH-2024-001', quantity: 500, completed: 0, bellowsCoverage: false, labelPrinted: false, appearanceChecked: false, status: 'pending', createTime: '2024-01-23 08:00:00', operator: '', packageSpec: '30条/箱', labelTemplate: '标准标签模板B', appearanceRecords: [], labelPrintRecords: [] },
 ]
 
 export const mockAppearanceCheckItems: AppearanceCheckItem[] = [

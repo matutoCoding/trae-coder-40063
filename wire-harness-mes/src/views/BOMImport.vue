@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadRawFile, UploadUserFile } from 'element-plus'
 import * as XLSX from 'xlsx'
-import { Plus, Download, UploadFilled, DataAnalysis, VideoPlay } from '@element-plus/icons-vue'
+import { Plus, Download, UploadFilled, DataAnalysis, VideoPlay, Scissor, Connection, Watermelon, Grid, Lightning, Box, ArrowRight } from '@element-plus/icons-vue'
 import { useMESStore } from '../stores/mes'
 import type { BOMItem, BOM } from '../types'
 
@@ -46,9 +46,19 @@ const activeBom = computed(() => {
   return store.boms.find(b => b.id === activeBomId.value) || null
 })
 
+const activeBatch = computed(() => {
+  if (!activeBomId.value) return null
+  return store.getBatchByBom(activeBomId.value)
+})
+
 const activeTaskSummary = computed(() => {
   if (!activeBomId.value) return null
   return store.getTaskSummaryByBom(activeBomId.value)
+})
+
+const activeProgress = computed(() => {
+  if (!activeBomId.value) return null
+  return store.getProgressByBom(activeBomId.value)
 })
 
 const manualActualQty = (row: BOMItem) => manualForm.productQuantity * (row.perSetQuantity || 1)
@@ -260,7 +270,15 @@ function buildBOMFromManual(): BOM | null {
   }
 }
 
-function confirmImport() {
+function buildShortageMessage(result: any): string {
+  if (!result || !result.shortageList || result.shortageList.length === 0) return ''
+  return result.shortageList.map((s: any, i: number) => {
+    const wires = s.affectedWireNos && s.affectedWireNos.length > 0 ? `（影响：${s.affectedWireNos.join('、')}）` : ''
+    return `${i + 1}. ${s.type} - ${s.name} 需${s.need}，可用${s.stock}，缺${s.shortage}${wires}`
+  }).join('\n')
+}
+
+async function confirmImport() {
   let newBOM: BOM | null = null
   if (activeTab.value === 'excel') {
     newBOM = buildBOMFromExcel()
@@ -268,6 +286,26 @@ function confirmImport() {
     newBOM = buildBOMFromManual()
   }
   if (!newBOM) return
+
+  const result = store.calcMaterialRequirement(newBOM)
+  if (result.hasShortage) {
+    const msg = buildShortageMessage(result)
+    try {
+      await ElMessageBox.confirm(
+        `检测到以下物料库存不足，是否仍要保存草稿？\n\n${msg}`,
+        '物料库存不足提醒',
+        {
+          type: 'warning',
+          confirmButtonText: '仍要保存草稿',
+          cancelButtonText: '取消导入',
+          dangerouslyUseHTMLString: false
+        }
+      )
+    } catch {
+      return
+    }
+  }
+
   store.addBOM(newBOM)
   ElMessage.success(`BOM已导入：${newBOM.productNo}（${newBOM.productName}）· 产品批量${newBOM.productQuantity}套 · 共${newBOM.totalWires}种线号`)
   router.push({ query: { bomId: newBOM.id } })
@@ -294,14 +332,24 @@ function showMaterialCalcForBom() {
   materialDialogVisible.value = true
 }
 
-async function handleIssue() {
-  if (!activeBom.value) return
-  const result = store.calcMaterialRequirement(activeBom.value)
+async function handleIssue(bom?: BOM) {
+  const targetBom = bom || activeBom.value
+  if (!targetBom) return
+  const bomId = targetBom.id
+  const existing = store.getTaskSummaryByBom(bomId)
+  if (existing.cutting > 0) {
+    if (!bom) {
+      router.push({ query: { bomId } })
+    }
+    return
+  }
+
+  const result = store.calcMaterialRequirement(targetBom)
   if (result.hasShortage) {
-    const names = result.shortageList.map((s: any, i: number) => `${i + 1}. ${s.type} - ${s.name} 需${s.need}，库存${s.stock}，缺${s.shortage}`).join('\n')
+    const msg = buildShortageMessage(result)
     try {
       await ElMessageBox.confirm(
-        `检测到以下物料库存不足，是否仍要下发？\n\n${names}`,
+        `检测到以下物料库存不足，是否仍要下发生产？\n\n${msg}`,
         '物料库存不足提醒',
         { type: 'warning', confirmButtonText: '仍要下发', cancelButtonText: '取消', dangerouslyUseHTMLString: false }
       )
@@ -309,9 +357,25 @@ async function handleIssue() {
       return
     }
   }
-  store.generateCuttingTasksFromBOM(activeBom.value.id)
-  store.updateBOMStatus(activeBom.value.id, 'producing')
-  ElMessage.success(`已下发BOM：${activeBom.value.productNo}，各工序任务已生成`)
+  const batch = store.issueProduction(bomId)
+  if (batch) {
+    ElMessage.success(`已下发BOM：${targetBom.productNo}，生产批次【${batch.batchNo}】已生成`)
+  }
+}
+
+async function handleCancelProduction() {
+  if (!activeBom.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确认取消生产？已占用的物料将被释放，已生成的任务将保留但不再追踪。`,
+      '取消生产确认',
+      { type: 'warning', confirmButtonText: '确认取消', cancelButtonText: '再想想' }
+    )
+  } catch {
+    return
+  }
+  store.cancelProduction(activeBom.value.id)
+  ElMessage.success('已取消生产，物料占用已释放')
 }
 
 function resetImport() {
@@ -345,10 +409,24 @@ function getStatusTag(status: string) {
   return map[status] || { type: 'info', text: status }
 }
 
+function getBatchStatusTag(status: string) {
+  const map: Record<string, { type: string; text: string }> = {
+    pending: { type: 'info', text: '待生产' },
+    producing: { type: 'primary', text: '生产中' },
+    completed: { type: 'success', text: '已完成' },
+    cancelled: { type: 'info', text: '已取消' }
+  }
+  return map[status] || { type: 'info', text: status }
+}
+
+function getStageColor(status: string) {
+  if (status === 'completed') return '#52c41a'
+  if (status === 'processing') return '#1890ff'
+  return '#bfbfbf'
+}
+
 if (activeBomId.value) {
-  // 有bomId就停在详情视图，不打开导入弹窗
 } else {
-  // 默认无bomId时展示导入弹窗方便快速操作
   dialogVisible.value = true
 }
 </script>
@@ -387,6 +465,14 @@ if (activeBomId.value) {
             {{ row.totalQuantity }} 根
           </template>
         </el-table-column>
+        <el-table-column label="关联批次" width="160">
+          <template #default="{ row }">
+            <span v-if="store.getBatchByBom(row.id)" class="batch-no">
+              {{ store.getBatchByBom(row.id)!.batchNo }}
+            </span>
+            <span v-else class="muted">—</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="version" label="版本" width="80" align="center" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
@@ -399,7 +485,13 @@ if (activeBomId.value) {
         <el-table-column label="操作" width="220" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click.stop="router.push({ query: { bomId: row.id } })">详情</el-button>
-            <el-button type="success" link size="small" :disabled="row.status === 'producing' || row.status === 'completed'" @click.stop="handleIssue">
+            <el-button
+              :type="store.getTaskSummaryByBom(row.id).cutting > 0 ? 'success' : 'primary'"
+              link
+              size="small"
+              :disabled="row.status === 'completed'"
+              @click.stop="handleIssue(row)"
+            >
               {{ store.getTaskSummaryByBom(row.id).cutting > 0 ? '查看任务' : '下发生产' }}
             </el-button>
           </template>
@@ -418,11 +510,30 @@ if (activeBomId.value) {
               <el-tag :type="getStatusTag(activeBom.status).type">{{ getStatusTag(activeBom.status).text }}</el-tag>
               <span>版本 {{ activeBom.version }}</span>
               <span>创建于 {{ activeBom.createTime }}</span>
+              <span v-if="activeBatch">
+                批次 <el-tag type="primary" effect="plain">{{ activeBatch.batchNo }}</el-tag>
+                <el-tag :type="getBatchStatusTag(activeBatch.status).type" size="small" style="margin-left:4px">
+                  {{ getBatchStatusTag(activeBatch.status).text }}
+                </el-tag>
+              </span>
             </div>
           </div>
           <div class="detail-actions">
             <el-button type="info" :icon="IconDataAnalysis" @click="showMaterialCalcForBom">物料需求核算</el-button>
-            <el-button v-if="activeBom.status === 'draft' || activeBom.status === 'approved'" type="primary" :icon="IconVideoPlay" @click="handleIssue">
+            <el-button
+              v-if="activeBom.status === 'producing' && activeBatch && activeBatch.status === 'producing'"
+              type="danger"
+              plain
+              @click="handleCancelProduction"
+            >
+              取消生产
+            </el-button>
+            <el-button
+              v-if="activeBom.status === 'draft' || activeBom.status === 'approved'"
+              type="primary"
+              :icon="IconVideoPlay"
+              @click="handleIssue()"
+            >
               {{ activeTaskSummary && activeTaskSummary.cutting > 0 ? '查看已生成任务' : '下发生产' }}
             </el-button>
           </div>
@@ -457,6 +568,58 @@ if (activeBomId.value) {
             </div>
           </el-col>
         </el-row>
+
+        <div v-if="activeProgress" class="progress-section">
+          <div class="progress-header">
+            <div>
+              <h4 class="progress-title">整体生产进度</h4>
+              <div class="progress-sub">
+                当前工序：<el-tag type="warning" size="small">{{ activeProgress.currentStageLabel }}</el-tag>
+              </div>
+            </div>
+            <div class="progress-total">
+              <span class="progress-pct">{{ activeProgress.overallProgress }}%</span>
+            </div>
+          </div>
+          <el-progress :percentage="activeProgress.overallProgress" :stroke-width="14" :show-text="false" />
+        </div>
+      </div>
+
+      <div v-if="activeProgress" class="card mb-16">
+        <div class="card-header">
+          <h3 class="card-title">各工序进度</h3>
+          <span class="muted">点击对应工序查看该产品任务</span>
+        </div>
+        <div class="stage-list">
+          <div
+            v-for="(s, idx) in activeProgress.stages"
+            :key="s.name"
+            class="stage-item"
+            :class="{ 'is-active': activeProgress.currentStage === s.name, 'is-done': s.status === 'completed' }"
+            @click="goToProcess(s.name)"
+          >
+            <div class="stage-icon" :style="{ background: getStageColor(s.status) + '22', color: getStageColor(s.status) }">
+              <el-icon v-if="s.name === 'cutting'" :size="20"><Scissor /></el-icon>
+              <el-icon v-else-if="s.name === 'crimping'" :size="20"><Connection /></el-icon>
+              <el-icon v-else-if="s.name === 'preAssembly'" :size="20"><Watermelon /></el-icon>
+              <el-icon v-else-if="s.name === 'assembly'" :size="20"><Grid /></el-icon>
+              <el-icon v-else-if="s.name === 'test'" :size="20"><Lightning /></el-icon>
+              <el-icon v-else :size="20"><Box /></el-icon>
+            </div>
+            <div class="stage-body">
+              <div class="stage-top">
+                <span class="stage-name">{{ s.label }}</span>
+                <span class="stage-meta">
+                  {{ s.completedQty }} / {{ s.totalQty }}
+                  <template v-if="s.name === 'assembly' || s.name === 'test' || s.name === 'packaging'">套</template>
+                  <template v-else>根</template>
+                </span>
+              </div>
+              <el-progress :percentage="s.progress" :stroke-width="8" :show-text="false" :color="getStageColor(s.status)" />
+            </div>
+            <el-icon v-if="idx < activeProgress.stages.length - 1" class="stage-arrow" :size="18" color="#d9d9d9"><ArrowRight /></el-icon>
+          </div>
+        </div>
       </div>
 
       <div class="card mb-16" v-if="activeTaskSummary && (activeTaskSummary.cutting > 0 || activeTaskSummary.assembly > 0)">
@@ -466,7 +629,7 @@ if (activeBomId.value) {
         </div>
         <div class="task-summary">
           <div class="task-item" @click="goToProcess('cutting')">
-            <div class="task-icon" style="background:#e6f7ff;color:#1890ff"><el-icon :size="22"><Scissors /></el-icon></div>
+            <div class="task-icon" style="background:#e6f7ff;color:#1890ff"><el-icon :size="22"><Scissor /></el-icon></div>
             <div class="task-info">
               <div class="task-name">裁线剥皮</div>
               <div class="task-count">{{ activeTaskSummary.cutting }} 条</div>
@@ -734,7 +897,7 @@ if (activeBomId.value) {
     </el-dialog>
 
     <!-- 物料需求核算弹窗 -->
-    <el-dialog v-model="materialDialogVisible" title="物料需求核算" width="880px" :close-on-click-modal="false">
+    <el-dialog v-model="materialDialogVisible" title="物料需求核算" width="960px" :close-on-click-modal="false">
       <div v-if="materialCalcBom && materialCalcResult">
         <div class="mat-header">
           <div>
@@ -747,7 +910,7 @@ if (activeBomId.value) {
             :closable="false"
             show-icon
             style="width: 380px"
-            title="部分物料库存不足，请补充后再生产"
+            title="部分物料可用库存不足"
           />
           <el-alert v-else type="success" :closable="false" show-icon style="width: 280px" title="所有物料库存充足" />
         </div>
@@ -760,8 +923,10 @@ if (activeBomId.value) {
           <el-table-column label="截面积" width="80" align="right">
             <template #default="{ row }">{{ row.crossSection }} mm²</template>
           </el-table-column>
-          <el-table-column prop="totalLengthMeter" label="需求长度(米)" width="110" align="right" />
-          <el-table-column prop="stockMeter" label="库存(米)" width="100" align="right" />
+          <el-table-column prop="totalLengthMeter" label="需求(米)" width="100" align="right" />
+          <el-table-column prop="stockMeter" label="总库存(米)" width="100" align="right" />
+          <el-table-column prop="occupiedMeter" label="已占用(米)" width="100" align="right" />
+          <el-table-column prop="availableMeter" label="可用(米)" width="100" align="right" />
           <el-table-column label="短缺" width="100" align="right">
             <template #default="{ row }">
               <span :style="{ color: row.shortage > 0 ? '#f5222d' : '#52c41a', fontWeight: 500 }">
@@ -775,8 +940,10 @@ if (activeBomId.value) {
         <el-table :data="materialCalcResult.terminals" size="small" border>
           <el-table-column type="index" label="#" width="45" align="center" />
           <el-table-column prop="terminalNo" label="端子型号" />
-          <el-table-column prop="count" label="需求数" width="100" align="right" />
-          <el-table-column prop="stock" label="库存" width="100" align="right" />
+          <el-table-column prop="count" label="需求" width="90" align="right" />
+          <el-table-column prop="stock" label="总库存" width="90" align="right" />
+          <el-table-column prop="occupied" label="已占用" width="90" align="right" />
+          <el-table-column prop="available" label="可用" width="90" align="right" />
           <el-table-column label="短缺" width="100" align="right">
             <template #default="{ row }">
               <span :style="{ color: row.shortage > 0 ? '#f5222d' : '#52c41a', fontWeight: 500 }">
@@ -790,8 +957,10 @@ if (activeBomId.value) {
         <el-table :data="materialCalcResult.waterproofPlugs" size="small" border empty-text="本BOM无需防水栓">
           <el-table-column type="index" label="#" width="45" align="center" />
           <el-table-column prop="plugNo" label="防水栓型号" />
-          <el-table-column prop="count" label="需求数" width="100" align="right" />
-          <el-table-column prop="stock" label="库存" width="100" align="right" />
+          <el-table-column prop="count" label="需求" width="90" align="right" />
+          <el-table-column prop="stock" label="总库存" width="90" align="right" />
+          <el-table-column prop="occupied" label="已占用" width="90" align="right" />
+          <el-table-column prop="available" label="可用" width="90" align="right" />
           <el-table-column label="短缺" width="100" align="right">
             <template #default="{ row }">
               <span :style="{ color: row.shortage > 0 ? '#f5222d' : '#52c41a', fontWeight: 500 }">
@@ -800,6 +969,29 @@ if (activeBomId.value) {
             </template>
           </el-table-column>
         </el-table>
+
+        <div v-if="materialCalcResult.shortageList && materialCalcResult.shortageList.length > 0" class="shortage-detail">
+          <div class="section-title">缺料影响明细</div>
+          <el-table :data="materialCalcResult.shortageList" size="small" border>
+            <el-table-column type="index" label="#" width="45" align="center" />
+            <el-table-column prop="type" label="物料类型" width="80" />
+            <el-table-column prop="name" label="物料编号" width="160" />
+            <el-table-column prop="need" label="需求" width="100" align="right" />
+            <el-table-column prop="stock" label="可用" width="100" align="right" />
+            <el-table-column prop="shortage" label="缺口" width="100" align="right">
+              <template #default="{ row }">
+                <span style="color:#f5222d;font-weight:600">{{ row.shortage }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="影响线号">
+              <template #default="{ row }">
+                <el-tag v-for="w in (row.affectedWireNos || [])" :key="w" size="small" type="danger" effect="plain" style="margin:2px">
+                  {{ w }}
+                </el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </div>
       <template #footer>
         <el-button @click="materialDialogVisible = false">关闭</el-button>
@@ -861,6 +1053,13 @@ if (activeBomId.value) {
 
 .mb-16 { margin-bottom: 16px; }
 
+.batch-no {
+  font-family: Consolas, Menlo, monospace;
+  font-size: 12px;
+  color: #1890ff;
+  font-weight: 500;
+}
+
 .detail-top {
   display: flex;
   justify-content: space-between;
@@ -882,6 +1081,7 @@ if (activeBomId.value) {
   font-size: 13px;
   color: #8c8c8c;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .detail-actions {
@@ -915,6 +1115,122 @@ if (activeBomId.value) {
   font-size: 14px;
   color: #8c8c8c;
   font-weight: normal;
+}
+
+.progress-section {
+  padding: 0 20px 20px;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 4px;
+  padding-top: 16px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.progress-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.progress-sub {
+  font-size: 13px;
+  color: #595959;
+}
+
+.progress-total .progress-pct {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1890ff;
+}
+
+.stage-list {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 16px 20px;
+  overflow-x: auto;
+}
+
+.stage-item {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.stage-item:hover {
+  background: #e6f4ff;
+  border-color: #91caff;
+}
+
+.stage-item.is-active {
+  border-color: #1890ff;
+  background: #e6f4ff;
+  box-shadow: 0 2px 6px rgba(24, 144, 255, 0.15);
+}
+
+.stage-item.is-done {
+  border-color: #b7eb8f;
+  background: #f6ffed;
+}
+
+.stage-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stage-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.stage-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.stage-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.stage-meta {
+  font-size: 12px;
+  color: #595959;
+  white-space: nowrap;
+}
+
+.stage-arrow {
+  position: absolute;
+  right: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  background: #fff;
+  border-radius: 50%;
 }
 
 .task-summary {
@@ -1040,5 +1356,10 @@ if (activeBomId.value) {
   padding: 10px 0 16px;
   font-size: 14px;
   gap: 16px;
+  flex-wrap: wrap;
+}
+
+.shortage-detail {
+  margin-top: 8px;
 }
 </style>

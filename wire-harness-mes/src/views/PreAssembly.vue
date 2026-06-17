@@ -30,7 +30,8 @@ const filteredTasks = computed(() => {
     tasks = tasks.filter(t =>
       t.productNo.includes(searchKeyword.value) ||
       t.wireNo.includes(searchKeyword.value) ||
-      t.waterproofPlug.includes(searchKeyword.value)
+      t.waterproofPlug.includes(searchKeyword.value) ||
+      (t.batchNo && t.batchNo.includes(searchKeyword.value))
     )
   }
   return tasks
@@ -165,7 +166,7 @@ function handleComplete(task: PreAssemblyTask) {
         <div class="toolbar-right">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索产品/线号/防水栓"
+            placeholder="搜索产品/线号/防水栓/批次号"
             style="width: 220px"
             clearable
           >
@@ -178,6 +179,12 @@ function handleComplete(task: PreAssemblyTask) {
 
       <el-table :data="filteredTasks" style="width: 100%" stripe>
         <el-table-column type="index" label="#" width="50" align="center" />
+        <el-table-column label="批次号" width="160">
+          <template #default="{ row }">
+            <el-tag v-if="row.batchNo" type="primary" size="small" effect="plain">{{ row.batchNo }}</el-tag>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="productNo" label="产品编号" width="140" />
         <el-table-column prop="wireNo" label="线号" width="120" />
         <el-table-column prop="waterproofPlug" label="防水栓型号" width="140" />
@@ -363,4 +370,6 @@ function handleComplete(task: PreAssemblyTask) {
   justify-content: flex-end;
   margin-top: 16px;
 }
+
+.text-muted { color: #8c8c8c; }
 </style>

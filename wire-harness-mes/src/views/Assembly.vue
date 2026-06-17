@@ -45,7 +45,8 @@ const filteredTasks = computed(() => {
     tasks = tasks.filter(t =>
       t.productNo.includes(searchKeyword.value) ||
       t.sheathNo.includes(searchKeyword.value) ||
-      t.wireNo.includes(searchKeyword.value)
+      t.wireNo.includes(searchKeyword.value) ||
+      (t.batchNo && t.batchNo.includes(searchKeyword.value))
     )
   }
   return tasks
@@ -255,7 +256,7 @@ function getResultTag(result: 'pass' | 'fail') {
         <div class="toolbar-right">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索产品/护套/线号"
+            placeholder="搜索产品/护套/线号/批次号"
             style="width: 220px"
             clearable
           >
@@ -268,6 +269,12 @@ function getResultTag(result: 'pass' | 'fail') {
 
       <el-table :data="filteredTasks" style="width: 100%" stripe>
         <el-table-column type="index" label="#" width="50" align="center" />
+        <el-table-column label="批次号" width="160">
+          <template #default="{ row }">
+            <el-tag v-if="row.batchNo" type="primary" size="small" effect="plain">{{ row.batchNo }}</el-tag>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="productNo" label="产品编号" width="130" />
         <el-table-column prop="sheathNo" label="护套型号" width="150" />
         <el-table-column prop="holePosition" label="孔位" width="80" align="center" />

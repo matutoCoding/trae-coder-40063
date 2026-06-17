@@ -36,7 +36,8 @@ const filteredTasks = computed(() => {
     tasks = tasks.filter(t =>
       t.productNo.includes(searchKeyword.value) ||
       t.wireNo.includes(searchKeyword.value) ||
-      t.terminalNo.includes(searchKeyword.value)
+      t.terminalNo.includes(searchKeyword.value) ||
+      (t.batchNo && t.batchNo.includes(searchKeyword.value))
     )
   }
   return tasks
@@ -201,7 +202,7 @@ function getRecordResultClass(result: string) {
         <div class="toolbar-right">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索产品/线号/端子"
+            placeholder="搜索产品/线号/端子/批次号"
             style="width: 220px"
             clearable
           >
@@ -214,6 +215,12 @@ function getRecordResultClass(result: string) {
 
       <el-table :data="filteredTasks" style="width: 100%" stripe>
         <el-table-column type="index" label="#" width="50" align="center" />
+        <el-table-column label="批次号" width="160">
+          <template #default="{ row }">
+            <el-tag v-if="row.batchNo" type="primary" size="small" effect="plain">{{ row.batchNo }}</el-tag>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="productNo" label="产品编号" width="140" />
         <el-table-column prop="wireNo" label="线号" width="120" />
         <el-table-column prop="terminalNo" label="端子型号" width="120" />
@@ -453,4 +460,5 @@ function getRecordResultClass(result: string) {
 
 .text-success { color: #52c41a; font-weight: 500; }
 .text-danger { color: #ff4d4f; font-weight: 500; }
+.text-muted { color: #8c8c8c; }
 </style>
