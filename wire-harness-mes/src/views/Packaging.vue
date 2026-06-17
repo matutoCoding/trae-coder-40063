@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useMESStore } from '../stores/mes'
 import type { PackagingTask, AppearanceCheckRecord, LabelPrintRecord } from '../types'
 
 const store = useMESStore()
+const route = useRoute()
 
 const activeTab = ref('all')
-const searchKeyword = ref('')
+const searchKeyword = ref((route.query.productNo as string) || '')
 const dialogVisible = ref(false)
 const checkDialogVisible = ref(false)
 const labelDialogVisible = ref(false)

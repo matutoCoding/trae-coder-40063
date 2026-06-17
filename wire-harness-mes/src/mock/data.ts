@@ -64,14 +64,15 @@ export const mockBOMs: BOM[] = [
     version: 'V1.0',
     createTime: '2024-01-15 09:30:00',
     totalWires: 12,
+    productQuantity: 500,
     totalQuantity: 500,
     status: 'producing',
     items: [
-      { id: 'item1', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', crossSection: 0.5, length: 450, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: 'WPD-1.5', rightWaterproof: 'WPD-1.5', quantity: 500, remark: '电源线' },
-      { id: 'item2', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', crossSection: 0.5, length: 380, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: 'WPD-1.5', rightWaterproof: 'WPD-1.5', quantity: 500, remark: '地线' },
-      { id: 'item3', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', crossSection: 0.75, length: 520, leftTerminal: '2.8系列-公端', rightTerminal: '2.8系列-母端', leftWaterproof: 'WPD-2.8', rightWaterproof: 'WPD-2.8', quantity: 500, remark: '信号线' },
-      { id: 'item4', wireNo: 'AVSS-1.0', wireType: 'AVSS', color: '绿色', crossSection: 1.0, length: 600, leftTerminal: '2.8系列-公端', rightTerminal: '2.8系列-母端', leftWaterproof: 'WPD-2.8', rightWaterproof: 'WPD-2.8', quantity: 500, remark: '传感器线' },
-      { id: 'item5', wireNo: 'AVSS-1.5', wireType: 'AVSS', color: '蓝色', crossSection: 1.5, length: 350, leftTerminal: '4.8系列-公端', rightTerminal: '4.8系列-母端', leftWaterproof: 'WPD-4.8', rightWaterproof: 'WPD-4.8', quantity: 500, remark: '大电流线' },
+      { id: 'item1', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', crossSection: 0.5, length: 450, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: 'WPD-1.5', rightWaterproof: 'WPD-1.5', perSetQuantity: 1, quantity: 500, remark: '电源线' },
+      { id: 'item2', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', crossSection: 0.5, length: 380, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: 'WPD-1.5', rightWaterproof: 'WPD-1.5', perSetQuantity: 1, quantity: 500, remark: '地线' },
+      { id: 'item3', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', crossSection: 0.75, length: 520, leftTerminal: '2.8系列-公端', rightTerminal: '2.8系列-母端', leftWaterproof: 'WPD-2.8', rightWaterproof: 'WPD-2.8', perSetQuantity: 1, quantity: 500, remark: '信号线' },
+      { id: 'item4', wireNo: 'AVSS-1.0', wireType: 'AVSS', color: '绿色', crossSection: 1.0, length: 600, leftTerminal: '2.8系列-公端', rightTerminal: '2.8系列-母端', leftWaterproof: 'WPD-2.8', rightWaterproof: 'WPD-2.8', perSetQuantity: 1, quantity: 500, remark: '传感器线' },
+      { id: 'item5', wireNo: 'AVSS-1.5', wireType: 'AVSS', color: '蓝色', crossSection: 1.5, length: 350, leftTerminal: '4.8系列-公端', rightTerminal: '4.8系列-母端', leftWaterproof: 'WPD-4.8', rightWaterproof: 'WPD-4.8', perSetQuantity: 1, quantity: 500, remark: '大电流线' },
     ]
   },
   {
@@ -81,14 +82,15 @@ export const mockBOMs: BOM[] = [
     version: 'V1.2',
     createTime: '2024-02-20 14:00:00',
     totalWires: 18,
+    productQuantity: 300,
     totalQuantity: 300,
     status: 'approved',
     items: [
-      { id: 'item6', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', crossSection: 0.5, length: 300, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: '', rightWaterproof: '', quantity: 300, remark: '仪表电源线' },
-      { id: 'item7', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', crossSection: 0.5, length: 280, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: '', rightWaterproof: '', quantity: 300, remark: '仪表地线' },
-      { id: 'item8', wireNo: 'FLRY-B-0.5', wireType: 'FLRY-B', color: '红色', crossSection: 0.5, length: 420, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-公端', leftWaterproof: '', rightWaterproof: '', quantity: 300, remark: 'CAN-H线' },
-      { id: 'item9', wireNo: 'FLRY-B-0.75', wireType: 'FLRY-B', color: '黑色', crossSection: 0.75, length: 420, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-公端', leftWaterproof: '', rightWaterproof: '', quantity: 300, remark: 'CAN-L线' },
-      { id: 'item10', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', crossSection: 0.75, length: 350, leftTerminal: '2.8系列-母端', rightTerminal: '2.8系列-母端', leftWaterproof: '', rightWaterproof: '', quantity: 300, remark: '指示灯线' },
+      { id: 'item6', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', crossSection: 0.5, length: 300, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: '', rightWaterproof: '', perSetQuantity: 1, quantity: 300, remark: '仪表电源线' },
+      { id: 'item7', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', crossSection: 0.5, length: 280, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: '', rightWaterproof: '', perSetQuantity: 1, quantity: 300, remark: '仪表地线' },
+      { id: 'item8', wireNo: 'FLRY-B-0.5', wireType: 'FLRY-B', color: '红色', crossSection: 0.5, length: 420, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-公端', leftWaterproof: '', rightWaterproof: '', perSetQuantity: 1, quantity: 300, remark: 'CAN-H线' },
+      { id: 'item9', wireNo: 'FLRY-B-0.75', wireType: 'FLRY-B', color: '黑色', crossSection: 0.75, length: 420, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-公端', leftWaterproof: '', rightWaterproof: '', perSetQuantity: 1, quantity: 300, remark: 'CAN-L线' },
+      { id: 'item10', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', crossSection: 0.75, length: 350, leftTerminal: '2.8系列-母端', rightTerminal: '2.8系列-母端', leftWaterproof: '', rightWaterproof: '', perSetQuantity: 1, quantity: 300, remark: '指示灯线' },
     ]
   },
   {
@@ -98,13 +100,14 @@ export const mockBOMs: BOM[] = [
     version: 'V2.0',
     createTime: '2024-03-10 10:15:00',
     totalWires: 8,
+    productQuantity: 800,
     totalQuantity: 800,
     status: 'completed',
     items: [
-      { id: 'item11', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', crossSection: 0.5, length: 200, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: 'WPD-1.5', rightWaterproof: '', quantity: 800, remark: '玻璃升降电源线' },
-      { id: 'item12', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', crossSection: 0.5, length: 200, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: 'WPD-1.5', rightWaterproof: '', quantity: 800, remark: '玻璃升降地线' },
-      { id: 'item13', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', crossSection: 0.75, length: 180, leftTerminal: '2.8系列-公端', rightTerminal: '2.8系列-母端', leftWaterproof: 'WPD-2.8', rightWaterproof: '', quantity: 800, remark: '门锁信号线' },
-      { id: 'item14', wireNo: 'AVSS-1.0', wireType: 'AVSS', color: '绿色', crossSection: 1.0, length: 220, leftTerminal: '2.8系列-公端', rightTerminal: '2.8系列-母端', leftWaterproof: 'WPD-2.8', rightWaterproof: '', quantity: 800, remark: '扬声器线' },
+      { id: 'item11', wireNo: 'AVSS-0.5', wireType: 'AVSS', color: '红色', crossSection: 0.5, length: 200, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: 'WPD-1.5', rightWaterproof: '', perSetQuantity: 1, quantity: 800, remark: '玻璃升降电源线' },
+      { id: 'item12', wireNo: 'AVSS-0.5-BK', wireType: 'AVSS', color: '黑色', crossSection: 0.5, length: 200, leftTerminal: '1.5系列-公端', rightTerminal: '1.5系列-母端', leftWaterproof: 'WPD-1.5', rightWaterproof: '', perSetQuantity: 1, quantity: 800, remark: '玻璃升降地线' },
+      { id: 'item13', wireNo: 'AVSS-0.75', wireType: 'AVSS', color: '黄色', crossSection: 0.75, length: 180, leftTerminal: '2.8系列-公端', rightTerminal: '2.8系列-母端', leftWaterproof: 'WPD-2.8', rightWaterproof: '', perSetQuantity: 1, quantity: 800, remark: '门锁信号线' },
+      { id: 'item14', wireNo: 'AVSS-1.0', wireType: 'AVSS', color: '绿色', crossSection: 1.0, length: 220, leftTerminal: '2.8系列-公端', rightTerminal: '2.8系列-母端', leftWaterproof: 'WPD-2.8', rightWaterproof: '', perSetQuantity: 1, quantity: 800, remark: '扬声器线' },
     ]
   },
   {
@@ -114,11 +117,12 @@ export const mockBOMs: BOM[] = [
     version: 'V1.0',
     createTime: '2024-04-05 16:45:00',
     totalWires: 6,
+    productQuantity: 200,
     totalQuantity: 200,
     status: 'draft',
     items: [
-      { id: 'item15', wireNo: 'AVSS-2.0', wireType: 'AVSS', color: '白色', crossSection: 2.0, length: 800, leftTerminal: '6.3系列-公端', rightTerminal: '6.3系列-母端', leftWaterproof: 'WPD-4.8', rightWaterproof: 'WPD-4.8', quantity: 200, remark: '主电源线' },
-      { id: 'item16', wireNo: 'AVSS-1.5', wireType: 'AVSS', color: '蓝色', crossSection: 1.5, length: 750, leftTerminal: '4.8系列-公端', rightTerminal: '4.8系列-母端', leftWaterproof: 'WPD-4.8', rightWaterproof: 'WPD-4.8', quantity: 200, remark: 'ABS信号线' },
+      { id: 'item15', wireNo: 'AVSS-2.0', wireType: 'AVSS', color: '白色', crossSection: 2.0, length: 800, leftTerminal: '6.3系列-公端', rightTerminal: '6.3系列-母端', leftWaterproof: 'WPD-4.8', rightWaterproof: 'WPD-4.8', perSetQuantity: 1, quantity: 200, remark: '主电源线' },
+      { id: 'item16', wireNo: 'AVSS-1.5', wireType: 'AVSS', color: '蓝色', crossSection: 1.5, length: 750, leftTerminal: '4.8系列-公端', rightTerminal: '4.8系列-母端', leftWaterproof: 'WPD-4.8', rightWaterproof: 'WPD-4.8', perSetQuantity: 1, quantity: 200, remark: 'ABS信号线' },
     ]
   }
 ]

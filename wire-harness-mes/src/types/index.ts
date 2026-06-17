@@ -52,6 +52,7 @@ export interface BOMItem {
   rightTerminal: string
   leftWaterproof: string
   rightWaterproof: string
+  perSetQuantity: number
   quantity: number
   remark: string
 }
@@ -63,6 +64,7 @@ export interface BOM {
   version: string
   createTime: string
   totalWires: number
+  productQuantity: number
   totalQuantity: number
   items: BOMItem[]
   status: 'draft' | 'approved' | 'producing' | 'completed'

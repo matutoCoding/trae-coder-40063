@@ -406,7 +406,7 @@ export const useMESStore = defineStore('mes', () => {
       holePosition: '1#-4#孔',
       wireNo: bom.items[0]?.wireNo || '-',
       terminalNo: bom.items[0]?.leftTerminal || '-',
-      quantity: bom.totalQuantity,
+      quantity: bom.productQuantity,
       completed: 0,
       status: 'pending',
       createTime: new Date().toLocaleString('zh-CN'),
@@ -420,7 +420,7 @@ export const useMESStore = defineStore('mes', () => {
       id: `test_${Date.now()}`,
       bomId: bom.id,
       productNo: bom.productNo,
-      quantity: bom.totalQuantity,
+      quantity: bom.productQuantity,
       completed: 0,
       passCount: 0,
       failCount: 0,
@@ -435,7 +435,7 @@ export const useMESStore = defineStore('mes', () => {
       id: `pkg_${Date.now()}`,
       bomId: bom.id,
       productNo: bom.productNo,
-      quantity: bom.totalQuantity,
+      quantity: bom.productQuantity,
       completed: 0,
       bellowsCoverage: false,
       labelPrinted: false,
@@ -449,6 +449,87 @@ export const useMESStore = defineStore('mes', () => {
       labelPrintRecords: []
     }
     packagingTasks.value.unshift(pkgTask)
+  }
+
+  function getTaskSummaryByBom(bomId: string) {
+    return {
+      cutting: cuttingTasks.value.filter(t => t.bomId === bomId).length,
+      crimping: crimpingTasks.value.filter(t => t.bomId === bomId).length,
+      preAssembly: preAssemblyTasks.value.filter(t => t.bomId === bomId).length,
+      assembly: assemblyTasks.value.filter(t => t.bomId === bomId).length,
+      test: conductorTestTasks.value.filter(t => t.bomId === bomId).length,
+      packaging: packagingTasks.value.filter(t => t.bomId === bomId).length,
+    }
+  }
+
+  function calcMaterialRequirement(bom: BOM) {
+    const wireNeed: Record<string, { wireNo: string; wireType: string; crossSection: number; color: string; totalLengthMeter: number }> = {}
+    const terminalNeed: Record<string, { terminalNo: string; count: number }> = {}
+    const waterproofNeed: Record<string, { plugNo: string; count: number }> = {}
+
+    bom.items.forEach(item => {
+      const perSetQty = item.perSetQuantity || 1
+      const actualQty = bom.productQuantity * perSetQty
+      const lengthMm = actualQty * item.length
+      const wireKey = `${item.wireType}_${item.crossSection}_${item.color}`
+      if (!wireNeed[wireKey]) {
+        wireNeed[wireKey] = { wireNo: item.wireNo, wireType: item.wireType, crossSection: item.crossSection, color: item.color, totalLengthMeter: 0 }
+      }
+      wireNeed[wireKey].totalLengthMeter += Number((lengthMm / 1000).toFixed(2))
+
+      if (item.leftTerminal) {
+        if (!terminalNeed[item.leftTerminal]) terminalNeed[item.leftTerminal] = { terminalNo: item.leftTerminal, count: 0 }
+        terminalNeed[item.leftTerminal].count += actualQty
+      }
+      if (item.rightTerminal) {
+        if (!terminalNeed[item.rightTerminal]) terminalNeed[item.rightTerminal] = { terminalNo: item.rightTerminal, count: 0 }
+        terminalNeed[item.rightTerminal].count += actualQty
+      }
+      if (item.leftWaterproof) {
+        if (!waterproofNeed[item.leftWaterproof]) waterproofNeed[item.leftWaterproof] = { plugNo: item.leftWaterproof, count: 0 }
+        waterproofNeed[item.leftWaterproof].count += actualQty
+      }
+      if (item.rightWaterproof) {
+        if (!waterproofNeed[item.rightWaterproof]) waterproofNeed[item.rightWaterproof] = { plugNo: item.rightWaterproof, count: 0 }
+        waterproofNeed[item.rightWaterproof].count += actualQty
+      }
+    })
+
+    const wiresList = Object.values(wireNeed).map(w => {
+      const stockItem = wires.value.find(x => x.wireNo === w.wireNo) || wires.value.find(x => x.wireType === w.wireType && x.crossSection === w.crossSection)
+      const stockMeter = stockItem ? stockItem.stock : 0
+      return { ...w, stockMeter, shortage: Math.max(0, w.totalLengthMeter - stockMeter) }
+    })
+
+    const terminalsList = Object.values(terminalNeed).map(t => {
+      const stockItem = terminals.value.find(x => x.terminalNo === t.terminalNo)
+      const stock = stockItem ? stockItem.stock : 0
+      return { ...t, stock, shortage: Math.max(0, t.count - stock) }
+    })
+
+    const waterproofList = Object.values(waterproofNeed).map(w => {
+      const stockItem = waterproofPlugs.value.find(x => x.plugNo === w.plugNo)
+      const stock = stockItem ? stockItem.stock : 0
+      return { ...w, stock, shortage: Math.max(0, w.count - stock) }
+    })
+
+    const hasShortage = wiresList.some(w => w.shortage > 0)
+      || terminalsList.some(t => t.shortage > 0)
+      || waterproofList.some(w => w.shortage > 0)
+
+    const shortageList = [
+      ...wiresList.filter(w => w.shortage > 0).map(w => ({ type: '线材', name: `${w.wireNo}(${w.color})`, need: `${w.totalLengthMeter}米`, stock: `${w.stockMeter}米`, shortage: `${w.shortage}米` })),
+      ...terminalsList.filter(t => t.shortage > 0).map(t => ({ type: '端子', name: t.terminalNo, need: `${t.count}个`, stock: `${t.stock}个`, shortage: `${t.shortage}个` })),
+      ...waterproofList.filter(w => w.shortage > 0).map(w => ({ type: '防水栓', name: w.plugNo, need: `${w.count}个`, stock: `${w.stock}个`, shortage: `${w.shortage}个` })),
+    ]
+
+    return {
+      wires: wiresList,
+      terminals: terminalsList,
+      waterproofPlugs: waterproofList,
+      hasShortage,
+      shortageList
+    }
   }
 
   return {
@@ -501,6 +582,8 @@ export const useMESStore = defineStore('mes', () => {
     saveAppearanceCheckRecords,
     setBellowsCoverage,
     addLabelPrintRecord,
-    generateCuttingTasksFromBOM
+    generateCuttingTasksFromBOM,
+    getTaskSummaryByBom,
+    calcMaterialRequirement
   }
 })

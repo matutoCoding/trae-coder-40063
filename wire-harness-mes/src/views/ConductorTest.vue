@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useMESStore } from '../stores/mes'
 import type { ConductorTestTask, ConductorTestRecord } from '../types'
 
 const store = useMESStore()
+const route = useRoute()
 
 const activeTab = ref('all')
-const searchKeyword = ref('')
+const searchKeyword = ref((route.query.productNo as string) || '')
 const dialogVisible = ref(false)
 const testDialogVisible = ref(false)
 const currentTask = ref<ConductorTestTask | null>(null)
