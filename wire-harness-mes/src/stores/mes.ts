@@ -1,19 +1,25 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type {
   BOM,
+  BOMItem,
   CuttingTask,
   CrimpingTask,
+  CrimpingRecord,
   PreAssemblyTask,
   AssemblyTask,
   ConductorTestTask,
+  ConductorTestRecord,
   PackagingTask,
   DashboardStats,
   WireMaterial,
   TerminalMaterial,
   SheathMaterial,
   WaterproofPlug,
-  AppearanceCheckItem
+  AppearanceCheckItem,
+  RetainForceTestRecord,
+  AppearanceCheckRecord,
+  LabelPrintRecord
 } from '../types'
 import {
   mockBOMs,
@@ -33,14 +39,46 @@ import {
   mockProcessData
 } from '../mock/data'
 
+const STORAGE_KEY = 'wire-harness-mes-data'
+
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const saved = localStorage.getItem(key)
+    if (saved) {
+      return JSON.parse(saved)
+    }
+  } catch (e) {
+    console.warn('加载本地数据失败，使用模拟数据', e)
+  }
+  return fallback
+}
+
+const initialData = loadFromStorage<{
+  boms: BOM[]
+  cuttingTasks: CuttingTask[]
+  crimpingTasks: CrimpingTask[]
+  preAssemblyTasks: PreAssemblyTask[]
+  assemblyTasks: AssemblyTask[]
+  conductorTestTasks: ConductorTestTask[]
+  packagingTasks: PackagingTask[]
+}>(STORAGE_KEY, {
+  boms: mockBOMs,
+  cuttingTasks: mockCuttingTasks,
+  crimpingTasks: mockCrimpingTasks,
+  preAssemblyTasks: mockPreAssemblyTasks,
+  assemblyTasks: mockAssemblyTasks,
+  conductorTestTasks: mockConductorTestTasks,
+  packagingTasks: mockPackagingTasks
+})
+
 export const useMESStore = defineStore('mes', () => {
-  const boms = ref<BOM[]>([...mockBOMs])
-  const cuttingTasks = ref<CuttingTask[]>([...mockCuttingTasks])
-  const crimpingTasks = ref<CrimpingTask[]>([...mockCrimpingTasks])
-  const preAssemblyTasks = ref<PreAssemblyTask[]>([...mockPreAssemblyTasks])
-  const assemblyTasks = ref<AssemblyTask[]>([...mockAssemblyTasks])
-  const conductorTestTasks = ref<ConductorTestTask[]>([...mockConductorTestTasks])
-  const packagingTasks = ref<PackagingTask[]>([...mockPackagingTasks])
+  const boms = ref<BOM[]>(initialData.boms)
+  const cuttingTasks = ref<CuttingTask[]>(initialData.cuttingTasks)
+  const crimpingTasks = ref<CrimpingTask[]>(initialData.crimpingTasks)
+  const preAssemblyTasks = ref<PreAssemblyTask[]>(initialData.preAssemblyTasks)
+  const assemblyTasks = ref<AssemblyTask[]>(initialData.assemblyTasks)
+  const conductorTestTasks = ref<ConductorTestTask[]>(initialData.conductorTestTasks)
+  const packagingTasks = ref<PackagingTask[]>(initialData.packagingTasks)
   const wires = ref<WireMaterial[]>([...mockWires])
   const terminals = ref<TerminalMaterial[]>([...mockTerminals])
   const sheaths = ref<SheathMaterial[]>([...mockSheaths])
@@ -51,6 +89,26 @@ export const useMESStore = defineStore('mes', () => {
   const processData = ref([...mockProcessData])
 
   const currentBOM = ref<BOM | null>(null)
+
+  watch(
+    [boms, cuttingTasks, crimpingTasks, preAssemblyTasks, assemblyTasks, conductorTestTasks, packagingTasks],
+    () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          boms: boms.value,
+          cuttingTasks: cuttingTasks.value,
+          crimpingTasks: crimpingTasks.value,
+          preAssemblyTasks: preAssemblyTasks.value,
+          assemblyTasks: assemblyTasks.value,
+          conductorTestTasks: conductorTestTasks.value,
+          packagingTasks: packagingTasks.value
+        }))
+      } catch (e) {
+        console.warn('保存本地数据失败', e)
+      }
+    },
+    { deep: true }
+  )
 
   const pendingCuttingTasks = computed(() => cuttingTasks.value.filter(t => t.status === 'pending'))
   const processingCuttingTasks = computed(() => cuttingTasks.value.filter(t => t.status === 'processing'))
@@ -121,7 +179,7 @@ export const useMESStore = defineStore('mes', () => {
     }
   }
 
-  function addCrimpingRecord(taskId: string, record: CrimpingTask['records'][0]) {
+  function addCrimpingRecord(taskId: string, record: CrimpingRecord) {
     const task = crimpingTasks.value.find(t => t.id === taskId)
     if (task) {
       task.records.push(record)
@@ -166,6 +224,16 @@ export const useMESStore = defineStore('mes', () => {
     }
   }
 
+  function addRetainForceRecord(taskId: string, record: RetainForceTestRecord) {
+    const task = assemblyTasks.value.find(t => t.id === taskId)
+    if (task) {
+      task.retainForceRecords.push(record)
+      if (record.result === 'pass') {
+        task.retainForcePassed = true
+      }
+    }
+  }
+
   function updateConductorTestTaskStatus(id: string, status: ConductorTestTask['status']) {
     const task = conductorTestTasks.value.find(t => t.id === id)
     if (task) {
@@ -173,7 +241,7 @@ export const useMESStore = defineStore('mes', () => {
     }
   }
 
-  function addConductorTestRecord(taskId: string, record: ConductorTestTask['records'][0]) {
+  function addConductorTestRecord(taskId: string, record: ConductorTestRecord) {
     const task = conductorTestTasks.value.find(t => t.id === taskId)
     if (task) {
       task.records.push(record)
@@ -210,11 +278,40 @@ export const useMESStore = defineStore('mes', () => {
     }
   }
 
+  function saveAppearanceCheckRecords(taskId: string, records: AppearanceCheckRecord[]) {
+    const task = packagingTasks.value.find(t => t.id === taskId)
+    if (task) {
+      task.appearanceRecords = records
+      const requiredPassed = records.filter(r => r.isRequired).every(r => r.checked && r.result === 'pass')
+      if (requiredPassed && records.length > 0) {
+        task.appearanceChecked = true
+      }
+    }
+  }
+
+  function setBellowsCoverage(taskId: string, value: boolean) {
+    const task = packagingTasks.value.find(t => t.id === taskId)
+    if (task) {
+      task.bellowsCoverage = value
+    }
+  }
+
+  function addLabelPrintRecord(taskId: string, record: LabelPrintRecord) {
+    const task = packagingTasks.value.find(t => t.id === taskId)
+    if (task) {
+      task.labelPrintRecords.push(record)
+      task.labelPrinted = true
+    }
+  }
+
   function generateCuttingTasksFromBOM(bomId: string) {
     const bom = boms.value.find(b => b.id === bomId)
     if (!bom) return
 
-    bom.items.forEach((item, index) => {
+    const existingCount = cuttingTasks.value.filter(t => t.bomId === bomId).length
+    if (existingCount > 0) return
+
+    bom.items.forEach((item: BOMItem, index: number) => {
       const task: CuttingTask = {
         id: `cut_${Date.now()}_${index}`,
         bomId: bom.id,
@@ -235,6 +332,117 @@ export const useMESStore = defineStore('mes', () => {
       }
       cuttingTasks.value.unshift(task)
     })
+
+    bom.items.forEach((item: BOMItem, index: number) => {
+      if (item.leftTerminal) {
+        const leftTask: CrimpingTask = {
+          id: `crimp_left_${Date.now()}_${index}`,
+          bomId: bom.id,
+          productNo: bom.productNo,
+          wireNo: item.wireNo,
+          terminalNo: item.leftTerminal,
+          side: 'left',
+          quantity: item.quantity,
+          completed: 0,
+          status: 'pending',
+          standardHeight: 1.5,
+          minTensile: 50,
+          createTime: new Date().toLocaleString('zh-CN'),
+          operator: '',
+          machine: '',
+          records: []
+        }
+        crimpingTasks.value.unshift(leftTask)
+      }
+      if (item.rightTerminal && item.rightTerminal !== item.leftTerminal) {
+        const rightTask: CrimpingTask = {
+          id: `crimp_right_${Date.now()}_${index}`,
+          bomId: bom.id,
+          productNo: bom.productNo,
+          wireNo: item.wireNo,
+          terminalNo: item.rightTerminal,
+          side: 'right',
+          quantity: item.quantity,
+          completed: 0,
+          status: 'pending',
+          standardHeight: 1.5,
+          minTensile: 50,
+          createTime: new Date().toLocaleString('zh-CN'),
+          operator: '',
+          machine: '',
+          records: []
+        }
+        crimpingTasks.value.unshift(rightTask)
+      }
+      if (item.leftWaterproof || item.rightWaterproof) {
+        const preTask: PreAssemblyTask = {
+          id: `pre_${Date.now()}_${index}`,
+          bomId: bom.id,
+          productNo: bom.productNo,
+          wireNo: item.wireNo,
+          waterproofPlug: item.leftWaterproof || item.rightWaterproof,
+          side: (item.leftWaterproof && item.rightWaterproof) ? 'both' : item.leftWaterproof ? 'left' : 'right',
+          quantity: item.quantity,
+          completed: 0,
+          status: 'pending',
+          createTime: new Date().toLocaleString('zh-CN'),
+          operator: ''
+        }
+        preAssemblyTasks.value.unshift(preTask)
+      }
+    })
+
+    const asmTask: AssemblyTask = {
+      id: `asm_${Date.now()}`,
+      bomId: bom.id,
+      productNo: bom.productNo,
+      sheathNo: 'DJ7041-1.5-11',
+      holePosition: '1#-4#孔',
+      wireNo: bom.items[0]?.wireNo || '-',
+      terminalNo: bom.items[0]?.leftTerminal || '-',
+      quantity: bom.totalQuantity,
+      completed: 0,
+      status: 'pending',
+      createTime: new Date().toLocaleString('zh-CN'),
+      operator: '',
+      retainForcePassed: false,
+      retainForceRecords: []
+    }
+    assemblyTasks.value.unshift(asmTask)
+
+    const testTask: ConductorTestTask = {
+      id: `test_${Date.now()}`,
+      bomId: bom.id,
+      productNo: bom.productNo,
+      quantity: bom.totalQuantity,
+      completed: 0,
+      passCount: 0,
+      failCount: 0,
+      status: 'pending',
+      createTime: new Date().toLocaleString('zh-CN'),
+      operator: '',
+      records: []
+    }
+    conductorTestTasks.value.unshift(testTask)
+
+    const pkgTask: PackagingTask = {
+      id: `pkg_${Date.now()}`,
+      bomId: bom.id,
+      productNo: bom.productNo,
+      quantity: bom.totalQuantity,
+      completed: 0,
+      bellowsCoverage: false,
+      labelPrinted: false,
+      appearanceChecked: false,
+      status: 'pending',
+      createTime: new Date().toLocaleString('zh-CN'),
+      operator: '',
+      packageSpec: '30条/箱',
+      labelTemplate: '标准标签模板A',
+      appearanceRecords: [],
+      labelPrintRecords: []
+    }
+    packagingTasks.value.unshift(pkgTask)
   }
 
   return {
@@ -278,10 +486,14 @@ export const useMESStore = defineStore('mes', () => {
     updatePreAssemblyCompleted,
     updateAssemblyTaskStatus,
     updateAssemblyCompleted,
+    addRetainForceRecord,
     updateConductorTestTaskStatus,
     addConductorTestRecord,
     updatePackagingTaskStatus,
     updatePackagingCompleted,
+    saveAppearanceCheckRecords,
+    setBellowsCoverage,
+    addLabelPrintRecord,
     generateCuttingTasksFromBOM
   }
 })

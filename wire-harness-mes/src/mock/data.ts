@@ -177,10 +177,14 @@ export const mockPreAssemblyTasks: PreAssemblyTask[] = [
 ]
 
 export const mockAssemblyTasks: AssemblyTask[] = [
-  { id: 'asm001', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '1#孔', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-公端', quantity: 500, completed: 200, status: 'processing', createTime: '2024-01-20 08:00:00', operator: '陈工' },
-  { id: 'asm002', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '2#孔', wireNo: 'AVSS-0.5-BK', terminalNo: '1.5系列-公端', quantity: 500, completed: 150, status: 'processing', createTime: '2024-01-20 08:00:00', operator: '陈工' },
-  { id: 'asm003', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '3#孔', wireNo: 'AVSS-0.75', terminalNo: '2.8系列-公端', quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-20 08:00:00', operator: '' },
-  { id: 'asm004', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-21', holePosition: '1#孔', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-母端', quantity: 500, completed: 180, status: 'processing', createTime: '2024-01-20 09:00:00', operator: '周工' },
+  { id: 'asm001', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '1#孔', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-公端', quantity: 500, completed: 200, status: 'processing', createTime: '2024-01-20 08:00:00', operator: '陈工', retainForcePassed: true, retainForceRecords: [
+    { id: 'rf1', taskId: 'asm001', testNo: 'RF-2024-001', sampleIndex: 1, retainForce: 65, standardForce: 50, wireNo: 'AVSS-0.5', sheathNo: 'DJ7061-2.8-11', holePosition: '1#孔', operator: '陈工', testTime: '2024-01-20 10:00:00', result: 'pass', remark: '首件检测合格' }
+  ] },
+  { id: 'asm002', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '2#孔', wireNo: 'AVSS-0.5-BK', terminalNo: '1.5系列-公端', quantity: 500, completed: 150, status: 'processing', createTime: '2024-01-20 08:00:00', operator: '陈工', retainForcePassed: false, retainForceRecords: [] },
+  { id: 'asm003', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-11', holePosition: '3#孔', wireNo: 'AVSS-0.75', terminalNo: '2.8系列-公端', quantity: 500, completed: 0, status: 'pending', createTime: '2024-01-20 08:00:00', operator: '', retainForcePassed: false, retainForceRecords: [] },
+  { id: 'asm004', bomId: 'bom001', productNo: 'WH-2024-001', sheathNo: 'DJ7061-2.8-21', holePosition: '1#孔', wireNo: 'AVSS-0.5', terminalNo: '1.5系列-母端', quantity: 500, completed: 180, status: 'processing', createTime: '2024-01-20 09:00:00', operator: '周工', retainForcePassed: true, retainForceRecords: [
+    { id: 'rf2', taskId: 'asm004', testNo: 'RF-2024-002', sampleIndex: 1, retainForce: 58, standardForce: 50, wireNo: 'AVSS-0.5', sheathNo: 'DJ7061-2.8-21', holePosition: '1#孔', operator: '周工', testTime: '2024-01-20 10:30:00', result: 'pass', remark: '首件检测合格' }
+  ] },
 ]
 
 export const mockConductorTestTasks: ConductorTestTask[] = [
@@ -201,8 +205,10 @@ export const mockConductorTestTasks: ConductorTestTask[] = [
 ]
 
 export const mockPackagingTasks: PackagingTask[] = [
-  { id: 'pkg001', bomId: 'bom003', productNo: 'WH-2024-003', quantity: 800, completed: 750, bellowsCoverage: true, labelPrinted: true, appearanceChecked: true, status: 'processing', createTime: '2024-03-21 08:00:00', operator: '郑工', packageSpec: '50条/箱', labelTemplate: '标准标签模板A' },
-  { id: 'pkg002', bomId: 'bom001', productNo: 'WH-2024-001', quantity: 500, completed: 0, bellowsCoverage: false, labelPrinted: false, appearanceChecked: false, status: 'pending', createTime: '2024-01-23 08:00:00', operator: '', packageSpec: '30条/箱', labelTemplate: '标准标签模板B' },
+  { id: 'pkg001', bomId: 'bom003', productNo: 'WH-2024-003', quantity: 800, completed: 750, bellowsCoverage: true, labelPrinted: true, appearanceChecked: true, status: 'processing', createTime: '2024-03-21 08:00:00', operator: '郑工', packageSpec: '50条/箱', labelTemplate: '标准标签模板A', appearanceRecords: [], labelPrintRecords: [
+    { id: 'lp1', taskId: 'pkg001', printCount: 500, labelTemplate: '标准标签模板A', operator: '郑工', printTime: '2024-03-21 14:00:00' }
+  ] },
+  { id: 'pkg002', bomId: 'bom001', productNo: 'WH-2024-001', quantity: 500, completed: 0, bellowsCoverage: false, labelPrinted: false, appearanceChecked: false, status: 'pending', createTime: '2024-01-23 08:00:00', operator: '', packageSpec: '30条/箱', labelTemplate: '标准标签模板B', appearanceRecords: [], labelPrintRecords: [] },
 ]
 
 export const mockAppearanceCheckItems: AppearanceCheckItem[] = [

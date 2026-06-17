@@ -146,6 +146,43 @@ export interface AssemblyTask {
   status: 'pending' | 'processing' | 'completed'
   createTime: string
   operator: string
+  retainForcePassed: boolean
+  retainForceRecords: RetainForceTestRecord[]
+}
+
+export interface RetainForceTestRecord {
+  id: string
+  taskId: string
+  testNo: string
+  sampleIndex: number
+  retainForce: number
+  standardForce: number
+  wireNo: string
+  sheathNo: string
+  holePosition: string
+  operator: string
+  testTime: string
+  result: 'pass' | 'fail'
+  remark: string
+}
+
+export interface AppearanceCheckRecord {
+  id: string
+  checkItemId: string
+  checkItem: string
+  isRequired: boolean
+  checked: boolean
+  result: 'pass' | 'fail'
+  remark: string
+}
+
+export interface LabelPrintRecord {
+  id: string
+  taskId: string
+  printCount: number
+  labelTemplate: string
+  operator: string
+  printTime: string
 }
 
 export interface ConductorTestRecord {
@@ -198,6 +235,8 @@ export interface PackagingTask {
   operator: string
   packageSpec: string
   labelTemplate: string
+  appearanceRecords: AppearanceCheckRecord[]
+  labelPrintRecords: LabelPrintRecord[]
 }
 
 export interface DashboardStats {

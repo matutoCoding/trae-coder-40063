@@ -226,7 +226,7 @@ function getRecordResultClass(result: string) {
             <el-progress
               :percentage="Number(getPassRate(row))"
               :stroke-width="8"
-              :color="getPassRate(row) >= 98 ? '#52c41a' : '#faad14'"
+              :color="Number(getPassRate(row)) >= 98 ? '#52c41a' : '#faad14'"
             />
           </template>
         </el-table-column>

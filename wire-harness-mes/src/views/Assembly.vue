@@ -1,16 +1,31 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useMESStore } from '../stores/mes'
-import type { AssemblyTask } from '../types'
+import type { AssemblyTask, RetainForceTestRecord } from '../types'
 
 const store = useMESStore()
 
 const activeTab = ref('all')
 const searchKeyword = ref('')
 const processDialogVisible = ref(false)
+const retainDialogVisible = ref(false)
+const detailDialogVisible = ref(false)
 const currentTask = ref<AssemblyTask | null>(null)
+const retainTask = ref<AssemblyTask | null>(null)
+const detailTask = ref<AssemblyTask | null>(null)
 const processForm = ref({ completed: 0, operator: '' })
+
+const retainForm = reactive({
+  sampleIndex: 1,
+  retainForce: 0,
+  standardForce: 50,
+  wireNo: '',
+  sheathNo: '',
+  holePosition: '',
+  operator: '',
+  remark: ''
+})
 
 const tabs = [
   { name: 'all', label: '全部' },
@@ -54,6 +69,24 @@ function getProgress(task: AssemblyTask) {
   return Math.round((task.completed / task.quantity) * 100)
 }
 
+function getRetainForceTag(task: AssemblyTask) {
+  if (task.retainForcePassed) {
+    return { type: 'success', text: '已通过' }
+  }
+  if (task.retainForceRecords && task.retainForceRecords.length > 0) {
+    return { type: 'danger', text: '未通过' }
+  }
+  return { type: 'info', text: '未检测' }
+}
+
+function calcStandardForce(crossSection: number): number {
+  if (crossSection >= 2.0) return 120
+  if (crossSection >= 1.5) return 90
+  if (crossSection >= 1.0) return 70
+  if (crossSection >= 0.75) return 60
+  return 50
+}
+
 function handleStart(task: AssemblyTask) {
   store.updateAssemblyTaskStatus(task.id, 'processing')
   ElMessage.success(`已开始 ${task.sheathNo} - ${task.holePosition} 的总装任务`)
@@ -80,6 +113,10 @@ function submitProcess() {
 }
 
 function handleComplete(task: AssemblyTask) {
+  if (!task.retainForcePassed) {
+    ElMessage.warning('请先通过端子保持力检测，再完成任务')
+    return
+  }
   ElMessageBox.confirm(`确认完成 "${task.sheathNo} - ${task.holePosition}" 的总装任务？`, '完成确认', {
     type: 'success'
   }).then(() => {
@@ -89,8 +126,66 @@ function handleComplete(task: AssemblyTask) {
   }).catch(() => {})
 }
 
-function handleCheckRetain() {
-  ElMessage.info('端子保持力检测功能')
+function handleCheckRetain(task: AssemblyTask) {
+  retainTask.value = task
+  retainForm.sampleIndex = (task.retainForceRecords?.length || 0) + 1
+  retainForm.retainForce = 0
+  retainForm.standardForce = calcStandardForce(0.5)
+  retainForm.wireNo = task.wireNo
+  retainForm.sheathNo = task.sheathNo
+  retainForm.holePosition = task.holePosition
+  retainForm.operator = task.operator || ''
+  retainForm.remark = ''
+  retainDialogVisible.value = true
+}
+
+function submitRetainTest() {
+  if (!retainTask.value) return
+  if (retainForm.retainForce <= 0) {
+    ElMessage.warning('请输入有效的检测值（大于0N）')
+    return
+  }
+  if (!retainForm.operator.trim()) {
+    ElMessage.warning('请输入操作人员')
+    return
+  }
+
+  const result: 'pass' | 'fail' = retainForm.retainForce >= retainForm.standardForce ? 'pass' : 'fail'
+  const record: RetainForceTestRecord = {
+    id: `ret_${Date.now()}`,
+    taskId: retainTask.value.id,
+    testNo: `RT${Date.now()}`,
+    sampleIndex: retainForm.sampleIndex,
+    retainForce: Number(retainForm.retainForce),
+    standardForce: Number(retainForm.standardForce),
+    wireNo: retainForm.wireNo,
+    sheathNo: retainForm.sheathNo,
+    holePosition: retainForm.holePosition,
+    operator: retainForm.operator.trim(),
+    testTime: new Date().toLocaleString('zh-CN'),
+    result,
+    remark: retainForm.remark
+  }
+
+  store.addRetainForceRecord(retainTask.value.id, record)
+  retainDialogVisible.value = false
+
+  if (result === 'pass') {
+    ElMessage.success(`第 ${retainForm.sampleIndex} 号试样检测通过（${retainForm.retainForce}N ≥ 标准${retainForm.standardForce}N）`)
+  } else {
+    ElMessage.error(`第 ${retainForm.sampleIndex} 号试样检测不合格（${retainForm.retainForce}N < 标准${retainForm.standardForce}N），请重新检测`)
+  }
+}
+
+function handleShowDetail(task: AssemblyTask) {
+  detailTask.value = task
+  detailDialogVisible.value = true
+}
+
+function getResultTag(result: 'pass' | 'fail') {
+  return result === 'pass'
+    ? { type: 'success' as const, text: '合格' }
+    : { type: 'danger' as const, text: '不合格' }
 }
 </script>
 
@@ -166,22 +261,18 @@ function handleCheckRetain() {
               <el-icon><Search /></el-icon>
             </template>
           </el-input>
-          <el-button type="warning" @click="handleCheckRetain">
-            <el-icon><Promotion /></el-icon>
-            保持力检测
-          </el-button>
         </div>
       </div>
 
       <el-table :data="filteredTasks" style="width: 100%" stripe>
         <el-table-column type="index" label="#" width="50" align="center" />
-        <el-table-column prop="productNo" label="产品编号" width="140" />
-        <el-table-column prop="sheathNo" label="护套型号" width="160" />
+        <el-table-column prop="productNo" label="产品编号" width="130" />
+        <el-table-column prop="sheathNo" label="护套型号" width="150" />
         <el-table-column prop="holePosition" label="孔位" width="80" align="center" />
-        <el-table-column prop="wireNo" label="线号" width="120" />
-        <el-table-column prop="terminalNo" label="端子型号" width="120" />
-        <el-table-column prop="quantity" label="计划数" width="80" align="right" />
-        <el-table-column label="完成进度" width="180">
+        <el-table-column prop="wireNo" label="线号" width="110" />
+        <el-table-column prop="terminalNo" label="端子型号" width="110" />
+        <el-table-column prop="quantity" label="计划数" width="70" align="right" />
+        <el-table-column label="完成进度" width="170">
           <template #default="{ row }">
             <div class="progress-cell">
               <el-progress :percentage="getProgress(row)" :stroke-width="8" />
@@ -189,17 +280,29 @@ function handleCheckRetain() {
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="operator" label="操作员" width="100" />
-        <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="状态" width="90" align="center">
+        <el-table-column label="保持力" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getRetainForceTag(row).type" size="small">
+              {{ getRetainForceTag(row).text }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="operator" label="操作员" width="90" />
+        <el-table-column label="状态" width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusTag(row.status).type" size="small">
               {{ getStatusTag(row.status).text }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right" align="center">
+        <el-table-column label="操作" width="250" fixed="right" align="center">
           <template #default="{ row }">
+            <el-button type="info" link size="small" @click="handleShowDetail(row)">
+              详情
+            </el-button>
+            <el-button type="warning" link size="small" @click="handleCheckRetain(row)">
+              保持力
+            </el-button>
             <el-button v-if="row.status === 'pending'" type="primary" link size="small" @click="handleStart(row)">
               开始
             </el-button>
@@ -243,6 +346,127 @@ function handleCheckRetain() {
       <template #footer>
         <el-button @click="processDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitProcess">确认提交</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="retainDialogVisible" title="端子保持力检测" width="520px" :close-on-click-modal="false">
+      <div class="retain-dialog">
+        <el-alert
+          title="按端子保持力检测标准，试样检测值必须 ≥ 标准值才算合格"
+          type="warning"
+          :closable="false"
+          style="margin-bottom: 20px"
+        />
+        <el-form :model="retainForm" label-width="110px">
+          <el-form-item label="试样编号">
+            <el-input-number v-model="retainForm.sampleIndex" :min="1" :max="999" style="width: 100%" />
+          </el-form-item>
+          <el-row :gutter="12">
+            <el-col :span="12">
+              <el-form-item label="护套型号">
+                <el-input v-model="retainForm.sheathNo" readonly />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="孔位">
+                <el-input v-model="retainForm.holePosition" readonly />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="12">
+            <el-col :span="12">
+              <el-form-item label="检测值 (N)">
+                <el-input-number v-model="retainForm.retainForce" :min="0" :precision="1" :step="5" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="标准值 (N)">
+                <el-input-number v-model="retainForm.standardForce" :min="10" :precision="0" :step="10" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="判定结果">
+            <el-tag
+              v-if="retainForm.retainForce > 0"
+              :type="retainForm.retainForce >= retainForm.standardForce ? 'success' : 'danger'"
+              size="large"
+            >
+              {{ retainForm.retainForce >= retainForm.standardForce ? '合格（检测值 ≥ 标准值）' : '不合格（检测值 < 标准值）' }}
+            </el-tag>
+            <span v-else class="text-muted">请先输入检测值</span>
+          </el-form-item>
+          <el-form-item label="操作人员">
+            <el-input v-model="retainForm.operator" placeholder="请输入检测操作人员" />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input v-model="retainForm.remark" type="textarea" :rows="2" placeholder="选填，如检测环境、异常说明等" />
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button @click="retainDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitRetainTest">保存检测记录</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="detailDialogVisible" title="总装任务详情" width="780px" :close-on-click-modal="false">
+      <div v-if="detailTask" class="detail-dialog">
+        <el-descriptions :column="3" border size="small" style="margin-bottom: 20px">
+          <el-descriptions-item label="任务编号">{{ detailTask.id }}</el-descriptions-item>
+          <el-descriptions-item label="产品编号">{{ detailTask.productNo }}</el-descriptions-item>
+          <el-descriptions-item label="护套型号">{{ detailTask.sheathNo }}</el-descriptions-item>
+          <el-descriptions-item label="孔位">{{ detailTask.holePosition }}</el-descriptions-item>
+          <el-descriptions-item label="线号">{{ detailTask.wireNo }}</el-descriptions-item>
+          <el-descriptions-item label="端子型号">{{ detailTask.terminalNo }}</el-descriptions-item>
+          <el-descriptions-item label="计划数量">{{ detailTask.quantity }}</el-descriptions-item>
+          <el-descriptions-item label="已完成">{{ detailTask.completed }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ detailTask.createTime }}</el-descriptions-item>
+          <el-descriptions-item label="操作员">{{ detailTask.operator || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusTag(detailTask.status).type" size="small">
+              {{ getStatusTag(detailTask.status).text }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="保持力">
+            <el-tag :type="getRetainForceTag(detailTask).type" size="small">
+              {{ getRetainForceTag(detailTask).text }}
+            </el-tag>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <div class="section-title">端子保持力检测记录</div>
+        <el-table
+          :data="detailTask.retainForceRecords || []"
+          size="small"
+          border
+          empty-text="暂无检测记录，请点击操作列「保持力」按钮录入"
+          style="margin-bottom: 8px"
+        >
+          <el-table-column type="index" label="#" width="50" align="center" />
+          <el-table-column prop="testNo" label="检测单号" width="140" />
+          <el-table-column prop="sampleIndex" label="试样号" width="70" align="center" />
+          <el-table-column prop="retainForce" label="检测值(N)" width="90" align="right">
+            <template #default="{ row }">
+              <span :style="{ color: row.retainForce >= row.standardForce ? '#52c41a' : '#f5222d', fontWeight: 500 }">
+                {{ row.retainForce }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="standardForce" label="标准值(N)" width="90" align="right" />
+          <el-table-column label="判定" width="70" align="center">
+            <template #default="{ row }">
+              <el-tag :type="getResultTag(row.result).type" size="small">
+                {{ getResultTag(row.result).text }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="operator" label="操作员" width="90" />
+          <el-table-column prop="testTime" label="检测时间" width="160" />
+          <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
+        </el-table>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -352,6 +576,17 @@ function handleCheckRetain() {
   font-size: 12px;
   color: #666;
   white-space: nowrap;
+}
+
+.text-muted { color: #8c8c8c; }
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 3px solid #1890ff;
 }
 
 .pagination {

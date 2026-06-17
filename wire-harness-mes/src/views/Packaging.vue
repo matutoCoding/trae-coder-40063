@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useMESStore } from '../stores/mes'
-import type { PackagingTask } from '../types'
+import type { PackagingTask, AppearanceCheckRecord, LabelPrintRecord } from '../types'
 
 const store = useMESStore()
 
@@ -11,9 +11,26 @@ const searchKeyword = ref('')
 const dialogVisible = ref(false)
 const checkDialogVisible = ref(false)
 const labelDialogVisible = ref(false)
+const detailDialogVisible = ref(false)
+
 const currentTask = ref<PackagingTask | null>(null)
+const checkTask = ref<PackagingTask | null>(null)
+const labelTask = ref<PackagingTask | null>(null)
+const detailTask = ref<PackagingTask | null>(null)
+
 const processForm = ref({ completed: 0, operator: '' })
-const checkItems = ref<{ id: string; checkItem: string; isRequired: boolean; checked: boolean; result?: string }[]>([])
+
+const checkItems = ref<{
+  id: string; checkItemId: string; checkItem: string; standard: string; checkMethod: string
+  isRequired: boolean; checked: boolean; result: 'pass' | 'fail'; remark: string
+}[]>([])
+
+const labelPrintForm = reactive({
+  printCount: 1,
+  template: '标准标签模板A',
+  operator: '',
+  printMethod: 'batch' as 'single' | 'batch'
+})
 
 const tabs = [
   { name: 'all', label: '全部' },
@@ -61,52 +78,128 @@ function handleStart(task: PackagingTask) {
 }
 
 function handleAppearanceCheck(task: PackagingTask) {
-  currentTask.value = task
-  checkItems.value = store.appearanceCheckItems.map(item => ({
-    ...item,
-    checked: false,
-    result: 'pass'
-  }))
+  checkTask.value = task
+
+  if (task.appearanceRecords && task.appearanceRecords.length > 0) {
+    checkItems.value = store.appearanceCheckItems.map(item => {
+      const saved = task.appearanceRecords!.find(r => r.checkItemId === item.id)
+      return {
+        id: item.id,
+        checkItemId: item.id,
+        checkItem: item.checkItem,
+        standard: item.standard,
+        checkMethod: item.checkMethod,
+        isRequired: item.isRequired,
+        checked: saved ? saved.checked : false,
+        result: (saved ? saved.result : 'pass') as 'pass' | 'fail',
+        remark: saved ? saved.remark : ''
+      }
+    })
+  } else {
+    checkItems.value = store.appearanceCheckItems.map(item => ({
+      id: item.id,
+      checkItemId: item.id,
+      checkItem: item.checkItem,
+      standard: item.standard,
+      checkMethod: item.checkMethod,
+      isRequired: item.isRequired,
+      checked: false,
+      result: 'pass' as 'pass' | 'fail',
+      remark: ''
+    }))
+  }
+
   checkDialogVisible.value = true
 }
 
 function submitAppearanceCheck() {
-  const allRequiredChecked = checkItems.value
-    .filter(i => i.isRequired)
-    .every(i => i.checked && i.result === 'pass')
+  if (!checkTask.value) return
 
-  if (!allRequiredChecked) {
-    ElMessage.warning('请确保所有必检项目合格')
+  const uncheckedRequired = checkItems.value.filter(i => i.isRequired && !i.checked)
+  const failedRequired = checkItems.value.filter(i => i.isRequired && i.checked && i.result !== 'pass')
+
+  if (uncheckedRequired.length > 0 || failedRequired.length > 0) {
+    const names: string[] = []
+    uncheckedRequired.forEach(i => names.push(`${i.checkItem}（未勾选）`))
+    failedRequired.forEach(i => names.push(`${i.checkItem}（不合格）`))
+    ElMessage.warning({
+      message: `必检项目未全部通过：\n${names.map((n, i) => `${i + 1}. ${n}`).join('\n')}`,
+      duration: 5000,
+      customClass: 'msg-wrap'
+    })
     return
   }
 
-  if (currentTask.value) {
-    currentTask.value.appearanceChecked = true
-  }
+  const records: AppearanceCheckRecord[] = checkItems.value.map(it => ({
+    id: `apr_${Date.now()}_${it.checkItemId}`,
+    checkItemId: it.checkItemId,
+    checkItem: it.checkItem,
+    isRequired: it.isRequired,
+    checked: it.checked,
+    result: it.result,
+    remark: it.remark
+  }))
+
+  store.saveAppearanceCheckRecords(checkTask.value.id, records)
   checkDialogVisible.value = false
-  ElMessage.success('外观检查完成')
+
+  const passedCount = records.filter(r => r.isRequired).every(r => r.checked && r.result === 'pass')
+  if (passedCount) {
+    ElMessage.success('外观检查全部通过，可进行后续工序')
+  } else {
+    ElMessage.warning('外观检查已保存，但仍有必检项未通过，请复查')
+  }
 }
 
 function handleBellows(task: PackagingTask) {
+  if (!task.appearanceChecked) {
+    ElMessage.warning('请先完成外观检查并全部通过，再进行波纹管包覆')
+    return
+  }
   ElMessageBox.confirm(`确认 "${task.productNo}" 的波纹管包覆已完成？`, '确认', {
     type: 'info'
   }).then(() => {
-    task.bellowsCoverage = true
+    store.setBellowsCoverage(task.id, true)
     ElMessage.success('波纹管包覆已登记')
   }).catch(() => {})
 }
 
 function handleLabelPrint(task: PackagingTask) {
-  currentTask.value = task
+  if (!task.appearanceChecked) {
+    ElMessage.warning('请先完成外观检查并全部通过，再打印标签')
+    return
+  }
+  labelTask.value = task
+  labelPrintForm.printCount = 1
+  labelPrintForm.template = task.labelTemplate || '标准标签模板A'
+  labelPrintForm.operator = task.operator || ''
+  labelPrintForm.printMethod = 'batch'
   labelDialogVisible.value = true
 }
 
 function submitLabelPrint() {
-  if (currentTask.value) {
-    currentTask.value.labelPrinted = true
+  if (!labelTask.value) return
+  if (labelPrintForm.printCount <= 0) {
+    ElMessage.warning('请输入有效的打印数量')
+    return
   }
+  if (!labelPrintForm.operator.trim()) {
+    ElMessage.warning('请输入操作人员')
+    return
+  }
+
+  const record: LabelPrintRecord = {
+    id: `lpr_${Date.now()}`,
+    taskId: labelTask.value.id,
+    printCount: Number(labelPrintForm.printCount),
+    labelTemplate: labelPrintForm.template,
+    operator: labelPrintForm.operator.trim(),
+    printTime: new Date().toLocaleString('zh-CN')
+  }
+
+  store.addLabelPrintRecord(labelTask.value.id, record)
   labelDialogVisible.value = false
-  ElMessage.success('标签已打印')
+  ElMessage.success(`已打印标签 ${labelPrintForm.printCount} 张，任务数量未改动`)
 }
 
 function handleProcess(task: PackagingTask) {
@@ -158,6 +251,27 @@ function getCheckStatus(task: PackagingTask) {
     { key: 'labelPrinted', label: '标签' }
   ]
   return checks.filter(c => task[c.key as keyof PackagingTask] as boolean).length + '/' + checks.length
+}
+
+function handleShowDetail(task: PackagingTask) {
+  detailTask.value = task
+  detailDialogVisible.value = true
+}
+
+function getResultTag(result: 'pass' | 'fail') {
+  return result === 'pass'
+    ? { type: 'success' as const, text: '合格' }
+    : { type: 'danger' as const, text: '不合格' }
+}
+
+function handleDropdownCommand(cmd: string, row: PackagingTask) {
+  if (cmd === 'appearance') handleAppearanceCheck(row)
+  if (cmd === 'bellows') handleBellows(row)
+  if (cmd === 'label') handleLabelPrint(row)
+}
+
+function makeDropdownHandler(row: PackagingTask) {
+  return (cmd: unknown) => handleDropdownCommand(String(cmd), row)
 }
 </script>
 
@@ -238,11 +352,11 @@ function getCheckStatus(task: PackagingTask) {
 
       <el-table :data="filteredTasks" style="width: 100%" stripe>
         <el-table-column type="index" label="#" width="50" align="center" />
-        <el-table-column prop="productNo" label="产品编号" width="140" />
-        <el-table-column prop="packageSpec" label="包装规格" width="110" />
-        <el-table-column prop="labelTemplate" label="标签模板" width="140" />
-        <el-table-column prop="quantity" label="计划数" width="80" align="right" />
-        <el-table-column label="完成进度" width="160">
+        <el-table-column prop="productNo" label="产品编号" width="130" />
+        <el-table-column prop="packageSpec" label="包装规格" width="100" />
+        <el-table-column prop="labelTemplate" label="标签模板" width="130" />
+        <el-table-column prop="quantity" label="计划数" width="70" align="right" />
+        <el-table-column label="完成进度" width="155">
           <template #default="{ row }">
             <div class="progress-cell">
               <el-progress :percentage="getProgress(row)" :stroke-width="8" />
@@ -250,7 +364,7 @@ function getCheckStatus(task: PackagingTask) {
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="包装检查" width="120" align="center">
+        <el-table-column label="包装检查" width="110" align="center">
           <template #default="{ row }">
             <el-tooltip placement="top">
               <template #content>
@@ -264,21 +378,18 @@ function getCheckStatus(task: PackagingTask) {
             </el-tooltip>
           </template>
         </el-table-column>
-        <el-table-column prop="operator" label="操作员" width="100" />
-        <el-table-column label="状态" width="90" align="center">
+        <el-table-column prop="operator" label="操作员" width="90" />
+        <el-table-column label="状态" width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusTag(row.status).type" size="small">
               {{ getStatusTag(row.status).text }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right" align="center">
+        <el-table-column label="操作" width="290" fixed="right" align="center">
           <template #default="{ row }">
-            <el-dropdown trigger="click" @command="(cmd) => {
-              if (cmd === 'appearance') handleAppearanceCheck(row)
-              if (cmd === 'bellows') handleBellows(row)
-              if (cmd === 'label') handleLabelPrint(row)
-            }">
+            <el-button type="info" link size="small" @click="handleShowDetail(row)">详情</el-button>
+            <el-dropdown trigger="click" @command="makeDropdownHandler(row)">
               <el-button type="info" link size="small">
                 检查项 <el-icon><ArrowDown /></el-icon>
               </el-button>
@@ -286,12 +397,17 @@ function getCheckStatus(task: PackagingTask) {
                 <el-dropdown-menu>
                   <el-dropdown-item command="appearance">
                     <el-icon><View /></el-icon> 外观检查
+                    <span v-if="row.appearanceChecked" class="item-ok">✓</span>
                   </el-dropdown-item>
-                  <el-dropdown-item command="bellows">
+                  <el-dropdown-item command="bellows" :disabled="!row.appearanceChecked">
                     <el-icon><MagicStick /></el-icon> 波纹管包覆
+                    <span v-if="!row.appearanceChecked" class="item-lock">（需先通过外观）</span>
+                    <span v-else-if="row.bellowsCoverage" class="item-ok">✓</span>
                   </el-dropdown-item>
-                  <el-dropdown-item command="label">
+                  <el-dropdown-item command="label" :disabled="!row.appearanceChecked">
                     <el-icon><Printer /></el-icon> 标签打印
+                    <span v-if="!row.appearanceChecked" class="item-lock">（需先通过外观）</span>
+                    <span v-else-if="row.labelPrinted" class="item-ok">✓</span>
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -319,20 +435,24 @@ function getCheckStatus(task: PackagingTask) {
       </div>
     </div>
 
-    <el-dialog v-model="checkDialogVisible" title="外观防呆检查" width="600px" :close-on-click-modal="false">
+    <el-dialog v-model="checkDialogVisible" title="外观防呆检查" width="720px" :close-on-click-modal="false">
       <div class="check-dialog">
         <el-alert
-          title="请对照检查清单逐项检查，确保产品外观质量"
+          title="请逐项勾选并判定结果。红色「必检」项目必须同时：已勾选 + 判定合格，才能放行后续工序。"
           type="warning"
           :closable="false"
           style="margin-bottom: 20px"
         />
         <el-table :data="checkItems" size="small" border>
-          <el-table-column type="selection" width="50" align="center" v-model="checked" />
-          <el-table-column prop="checkItem" label="检查项目" width="140" />
-          <el-table-column prop="standard" label="检查标准" />
-          <el-table-column prop="checkMethod" label="检查方法" width="120" />
-          <el-table-column label="是否必检" width="80" align="center">
+          <el-table-column label="勾选" width="55" align="center">
+            <template #default="{ row }">
+              <el-checkbox v-model="row.checked" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="checkItem" label="检查项目" width="130" />
+          <el-table-column prop="standard" label="检查标准" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="checkMethod" label="检查方法" width="100" />
+          <el-table-column label="是否必检" width="75" align="center">
             <template #default="{ row }">
               <el-tag v-if="row.isRequired" type="danger" size="small">必检</el-tag>
               <span v-else class="text-muted">选检</span>
@@ -350,40 +470,47 @@ function getCheckStatus(task: PackagingTask) {
       </div>
       <template #footer>
         <el-button @click="checkDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitAppearanceCheck">确认检查</el-button>
+        <el-button type="primary" @click="submitAppearanceCheck">保存并提交检查</el-button>
       </template>
     </el-dialog>
 
     <el-dialog v-model="labelDialogVisible" title="成品标签打印" width="500px" :close-on-click-modal="false">
-      <div v-if="currentTask" class="label-dialog">
+      <div v-if="labelTask" class="label-dialog">
         <el-form label-width="100px">
           <el-form-item label="产品编号">
-            <el-input :value="currentTask.productNo" readonly />
+            <el-input :value="labelTask.productNo" readonly />
+          </el-form-item>
+          <el-form-item label="任务计划数">
+            <el-input :value="`${labelTask.quantity} PCS（不受本页修改）`" readonly />
           </el-form-item>
           <el-form-item label="标签模板">
-            <el-select v-model="currentTask.labelTemplate" style="width: 100%">
+            <el-select v-model="labelPrintForm.template" style="width: 100%">
               <el-option label="标准标签模板A" value="标准标签模板A" />
               <el-option label="标准标签模板B" value="标准标签模板B" />
               <el-option label="客户定制模板" value="客户定制模板" />
             </el-select>
           </el-form-item>
-          <el-form-item label="打印数量">
-            <el-input-number v-model="currentTask.quantity" :min="1" style="width: 100%" />
+          <el-form-item label="打印数量 (张)">
+            <el-input-number v-model="labelPrintForm.printCount" :min="1" style="width: 100%" />
+            <div class="form-tip">※ 只代表打印多少张标签，不会修改任务计划数</div>
           </el-form-item>
           <el-form-item label="打印方式">
-            <el-radio-group>
+            <el-radio-group v-model="labelPrintForm.printMethod">
               <el-radio value="single">单张打印</el-radio>
               <el-radio value="batch">批量打印</el-radio>
             </el-radio-group>
           </el-form-item>
+          <el-form-item label="操作人员">
+            <el-input v-model="labelPrintForm.operator" placeholder="请输入操作人员" />
+          </el-form-item>
         </el-form>
         <div class="label-preview">
-          <div class="label-title">标签预览</div>
+          <div class="label-title">标签预览（共 {{ labelPrintForm.printCount }} 张）</div>
           <div class="label-content">
-            <div class="label-header">{{ currentTask.productName || '线束总成' }}</div>
+            <div class="label-header">{{ labelTask.productNo || '线束总成' }}</div>
             <div class="label-body">
-              <div>产品编号: {{ currentTask.productNo }}</div>
-              <div>数量: {{ currentTask.quantity }} PCS</div>
+              <div>产品编号: {{ labelTask.productNo }}</div>
+              <div>数量: {{ labelPrintForm.printCount }} PCS</div>
               <div>日期: {{ new Date().toLocaleDateString() }}</div>
             </div>
             <div class="label-barcode">|||||||||||</div>
@@ -419,6 +546,89 @@ function getCheckStatus(task: PackagingTask) {
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitProcess">确认提交</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="detailDialogVisible" title="包装任务详情" width="820px" :close-on-click-modal="false">
+      <div v-if="detailTask" class="detail-dialog">
+        <el-descriptions :column="3" border size="small" style="margin-bottom: 20px">
+          <el-descriptions-item label="任务编号">{{ detailTask.id }}</el-descriptions-item>
+          <el-descriptions-item label="产品编号">{{ detailTask.productNo }}</el-descriptions-item>
+          <el-descriptions-item label="包装规格">{{ detailTask.packageSpec }}</el-descriptions-item>
+          <el-descriptions-item label="标签模板">{{ detailTask.labelTemplate }}</el-descriptions-item>
+          <el-descriptions-item label="计划数量">
+            <b style="color:#1890ff">{{ detailTask.quantity }} PCS</b>
+          </el-descriptions-item>
+          <el-descriptions-item label="已完成">{{ detailTask.completed }}</el-descriptions-item>
+          <el-descriptions-item label="外观检查">
+            <el-tag v-if="detailTask.appearanceChecked" type="success" size="small">已通过</el-tag>
+            <el-tag v-else type="warning" size="small">未通过/未做</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="波纹管">
+            <el-tag v-if="detailTask.bellowsCoverage" type="success" size="small">已包覆</el-tag>
+            <el-tag v-else type="info" size="small">未包覆</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="标签打印">
+            <el-tag v-if="detailTask.labelPrinted" type="success" size="small">已打印</el-tag>
+            <el-tag v-else type="info" size="small">未打印</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间" :span="2">{{ detailTask.createTime }}</el-descriptions-item>
+          <el-descriptions-item label="操作员">{{ detailTask.operator || '-' }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div class="section-title">外观检查记录</div>
+        <el-table
+          :data="detailTask.appearanceRecords || []"
+          size="small"
+          border
+          empty-text="暂无检查记录"
+          style="margin-bottom: 20px"
+        >
+          <el-table-column type="index" label="#" width="50" align="center" />
+          <el-table-column prop="checkItem" label="检查项目" width="140" />
+          <el-table-column label="是否必检" width="80" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.isRequired" type="danger" size="small">必检</el-tag>
+              <span v-else class="text-muted">选检</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="已勾选" width="70" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.checked" type="success" size="small">是</el-tag>
+              <span v-else class="text-muted">否</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="结果" width="70" align="center">
+            <template #default="{ row }">
+              <el-tag :type="getResultTag(row.result).type" size="small">
+                {{ getResultTag(row.result).text }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
+        </el-table>
+
+        <div class="section-title">标签打印历史</div>
+        <el-table
+          :data="detailTask.labelPrintRecords || []"
+          size="small"
+          border
+          empty-text="暂无打印记录"
+        >
+          <el-table-column type="index" label="#" width="50" align="center" />
+          <el-table-column prop="printCount" label="打印数量(张)" width="110" align="right" />
+          <el-table-column prop="labelTemplate" label="使用模板" width="150" />
+          <el-table-column prop="operator" label="操作人员" width="100" />
+          <el-table-column prop="printTime" label="打印时间" width="170" />
+          <el-table-column label="任务计划数" width="110" align="right">
+            <template #default>
+              <span style="color:#1890ff">{{ detailTask.quantity }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -533,6 +743,24 @@ function getCheckStatus(task: PackagingTask) {
 .text-success { color: #52c41a; font-weight: 500; }
 .text-warning { color: #faad14; font-weight: 500; }
 .text-muted { color: #8c8c8c; }
+
+.item-ok { color: #52c41a; font-weight: 600; margin-left: 8px; }
+.item-lock { color: #8c8c8c; font-size: 12px; margin-left: 8px; }
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 3px solid #1890ff;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin-top: 4px;
+}
 
 .pagination {
   display: flex;
